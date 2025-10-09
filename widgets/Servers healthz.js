@@ -11,13 +11,50 @@
  *   }
  * ]
  */
-const servers = importModule('ServersList')
 const { setWidgetBackground } = importModule('SetWidgetBackground')
 
-const serversData = {
-  servers: [...servers],
-  lastUpdate: null
+let servers = []
+try {
+  servers = importModule('ServersList')
+} catch (e) {
+  if (config.runsInApp) {
+    const alert = new Alert()
+    alert.title = "Servers List Missing"
+    alert.message = "Do you want to create a servers list?"
+    alert.addAction("Yes")
+    alert.addCancelAction("No")
+    const response = await alert.present()
+    if (response === 0) {
+      const localFm = FileManager.local()
+      const localDocsDir = localFm.documentsDirectory()
+      const localServersListFilePath = localFm.joinPath(localDocsDir, "ServersList.js")
+      let initialServersList = []
+      while (true) {
+        const prompt = new Alert()
+        prompt.title = "Add Server"
+        prompt.message = "Enter the server name and public URL."
+        prompt.addTextField("Server Name", "")
+        prompt.addTextField("https://...", "")
+        prompt.addAction("Add Another")
+        prompt.addAction("Done")
+        const response = await prompt.present()
+        const url = prompt.textFieldValue(0)
+        const title = prompt.textFieldValue(1)
+        if (url && title) {
+          initialServersList.push({ url, title, status: null })
+        }
+        if (response === 1) break
+      }
+      const initialList = JSON.stringify(initialServersList, null, 2)
+      localFm.writeString(localServersListFilePath, initialList)
+      servers = importModule('ServersList')
+    } else {
+      return
+    }
+  }
 }
+
+const serversData = { servers, lastUpdate: null }
 
 const theme = {
   textColorOnline: Color.green(),
