@@ -1,5 +1,6 @@
 /**
  * List of country names with their ISO codes and corresponding flag emojis
+ * Used in the "Countries a year" widget
  */
 module.exports = [
     { "country": "Afghanistan", "isoCountryCode": "AF", "emojiCode": "\uD83C\uDDE6\uD83C\uDDEB" },

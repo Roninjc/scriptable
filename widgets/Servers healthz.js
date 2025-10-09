@@ -2,27 +2,20 @@
  * Servers healthz widget
  * 
  * This widget checks the health status of predefined servers and displays their status.
+ * A list of servers needs to be defined in a separate file (ServersList.js) with this format: 
+ * [
+ *   {
+ *     url: 'https://example.com',
+ *     title: 'Example Server',
+ *     status: null
+ *   }
+ * ]
  */
+const servers = importModule('ServersList')
 const { setWidgetBackground } = importModule('SetWidgetBackground')
 
 const serversData = {
-  servers:[
-    {
-      url: 'https://pve.milkyhome.eu',
-      title: 'Proxmox',
-      status: null,
-    },
-    {
-      url: 'https://haos.milkyhome.eu',
-      title: 'Homa assistant',
-      status: null,
-    },
-    {
-      url: 'https://passbolt.milkyhome.eu',
-      title: 'Passbolt',
-      status: null,
-    }
-  ],
+  servers: [...servers],
   lastUpdate: null
 }
 
