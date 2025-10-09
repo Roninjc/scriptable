@@ -25,9 +25,9 @@ try {
     alert.addCancelAction("No")
     const response = await alert.present()
     if (response === 0) {
-      const localFm = FileManager.local()
-      const localDocsDir = localFm.documentsDirectory()
-      const localServersListFilePath = localFm.joinPath(localDocsDir, "ServersList.js")
+      const fm = FileManager.iCloud()
+      const cloudDocsDir = fm.documentsDirectory()
+      const serversListFilePath = fm.joinPath(cloudDocsDir, "ServersList.js")
       let initialServersList = []
       while (true) {
         const prompt = new Alert()
@@ -38,15 +38,15 @@ try {
         prompt.addAction("Add Another")
         prompt.addAction("Done")
         const response = await prompt.present()
-        const url = prompt.textFieldValue(0)
-        const title = prompt.textFieldValue(1)
+        const title = prompt.textFieldValue(0)
+        const url = prompt.textFieldValue(1)
         if (url && title) {
           initialServersList.push({ url, title, status: null })
         }
         if (response === 1) break
       }
-      const initialList = JSON.stringify(initialServersList, null, 2)
-      localFm.writeString(localServersListFilePath, initialList)
+      const initialList = `module.exports = ${JSON.stringify(initialServersList, null, 2)}`
+      fm.writeString(serversListFilePath, initialList)
       servers = importModule('ServersList')
     } else {
       return
@@ -76,7 +76,7 @@ async function createWidget() {
   const widget = new ListWidget()
   const serversStack = widget.addStack()
   serversStack.layoutVertically()
-  const { servers, lastUpdate } = serversData
+  const { servers } = serversData
 
   for (const server of servers) {
     try {
@@ -85,7 +85,7 @@ async function createWidget() {
       const { statusCode } = req.response
       server.status = statusCode
     } catch (e) {
-      console.log(e)
+      console.log(`Error fetching ${server.title}: ${e}`)
     }
   }
   
