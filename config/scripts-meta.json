@@ -4,9 +4,14 @@
     "type": "helper",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
-  "SetWidgetBackground": {
+  "Shopping list": {
     "version": "1.0.0",
-    "type": "helper",
+    "type": "widget",
+    "lastUpdated": "2025-10-15T00:00:00Z"
+  },
+  "Pull": {
+    "version": "1.0.0",
+    "type": "script",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
   "Countries a year": {
@@ -19,19 +24,19 @@
     "type": "widget",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
-  "Shopping list": {
-    "version": "1.0.0",
-    "type": "widget",
-    "lastUpdated": "2025-10-15T00:00:00Z"
-  },
   "Push": {
     "version": "1.0.1",
     "type": "script",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
-  "Pull": {
+  "SetWidgetBackground": {
     "version": "1.0.0",
-    "type": "script",
+    "type": "helper",
     "lastUpdated": "2025-10-15T00:00:00Z"
+  },
+  "Push.js": {
+    "version": "0.0.1",
+    "type": "script",
+    "lastUpdated": "2025-10-15T14:02:25.596Z"
   }
 }
