@@ -34,14 +34,9 @@
     "type": "helper",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
-  "Pull.js": {
-    "version": "1.0.0",
-    "type": "script",
-    "lastUpdated": "2025-10-15T13:56:52.957Z"
-  },
   "Push.js": {
-    "version": "1.0.0",
+    "version": "0.0.1",
     "type": "script",
-    "lastUpdated": "2025-10-15T13:57:01.862Z"
+    "lastUpdated": "2025-10-15T14:02:25.596Z"
   }
 }
