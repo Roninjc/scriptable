@@ -13,18 +13,42 @@
  *  2️⃣ Update your GitHub username and repo below.
  */
 
-const GITHUB_USER = "YourUser";  // 👈 change this
-const GITHUB_REPO = "scriptable";
-const BRANCH = "main";
+const fm = FileManager.iCloud();
+const dir = fm.documentsDirectory();
+const configPath = fm.joinPath(dir, "config/config.json");
+const metaFilePath = fm.joinPath(dir, "config/scripts-meta.json");
+
+let config = {};
+if (fm.fileExists(configPath)) {
+  try {
+    config = JSON.parse(fm.readString(configPath));
+  } catch (e) {
+    const alert = new Alert();
+    alert.title = "❌ Error parsing config.json";
+    alert.message = e.toString();
+    alert.addAction("OK");
+    await alert.present();
+    return;
+  }
+} else {
+  const alert = new Alert();
+  alert.title = "❌ config.json not found";
+  alert.message = "Please create a config.json file in your Scriptable root folder with your GitHub settings.";
+  alert.addAction("OK");
+  await alert.present();
+  return;
+}
+
+// --- Configuration  vars ---
+const GITHUB_USER = config.GITHUB_USER || "YourUser";
+const GITHUB_REPO = config.GITHUB_REPO || "scriptable";
+const BRANCH = config.BRANCH || "main";
+
 const META_FILE = "scripts-meta.json";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
 const githubToken = Keychain.get("github_token");
 if (!githubToken) throw new Error("❌ Missing GitHub token in Keychain.");
-
-// --- Setup local access ---
-const fm = FileManager.iCloud();
-const dir = fm.documentsDirectory();
 
 // --- Fetch remote scripts-meta.json ---
 let meta = {};
@@ -34,8 +58,12 @@ try {
   meta = await req.loadJSON();
   console.log("✅ Loaded remote scripts-meta.json");
 } catch (e) {
-  console.warn("⚠️ Could not fetch remote meta file, starting fresh.");
-  meta = {};
+  const alert = new Alert();
+  alert.title = "❌ Error fetching remote meta";
+  alert.message = e.toString();
+  alert.addAction("OK");
+  await alert.present();
+  return;
 }
 
 // --- Get local .js files ---
@@ -178,9 +206,21 @@ metaUpload.body = JSON.stringify({
 
 const metaRes = await metaUpload.loadJSON();
 if (metaUpload.response.statusCode >= 200 && metaUpload.response.statusCode < 300) {
-  console.log("✅ scripts-meta.json updated successfully");
+  try {
+    fm.writeString(metaFilePath, JSON.stringify(meta, null, 2));
+  } catch (e) {
+    const errorAlert = new Alert();
+    errorAlert.title = "❌ Error saving scripts-meta.json";
+    errorAlert.message = e.toString();
+    errorAlert.addAction("OK");
+    await errorAlert.present();
+  }
 } else {
-  console.error(`❌ Failed to update scripts-meta.json: ${JSON.stringify(metaRes)}`);
+  const errorAlert = new Alert();
+  errorAlert.title = "❌ Failed to upload scripts-meta.json";
+  errorAlert.message = JSON.stringify(metaRes);
+  errorAlert.addAction("OK");
+  await errorAlert.present();
 }
 
 // --- Done ---

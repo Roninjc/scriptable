@@ -15,16 +15,10 @@
  *  2️⃣ Update your GitHub username/repository below.
  */
 
-const GITHUB_USER = "YourUser"; // 👈 Change this
-const GITHUB_REPO = "scriptable";
-const BRANCH = "main";
-
-const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
-const githubToken = Keychain.get("github_token");
-
 const fm = FileManager.iCloud();
 const dir = fm.documentsDirectory();
-const metaFilePath = fm.joinPath(dir, "scripts-meta.json");
+const configPath = fm.joinPath(dir, "config/config.json");
+const metaFilePath = fm.joinPath(dir, "config/scripts-meta.json");
 
 // --- Helper Functions ---
 function loadJSON(path) {
@@ -70,13 +64,42 @@ function compareVersions(a, b) {
   return 0;
 }
 
+let config = {};
+if (fm.fileExists(configPath)) {
+  try {
+    config = JSON.parse(fm.readString(configPath));
+  } catch (e) {
+    const alert = new Alert();
+    alert.title = "❌ Error parsing config.json";
+    alert.message = e.toString();
+    alert.addAction("OK");
+    await alert.present();
+    return;
+  }
+} else {
+  const alert = new Alert();
+  alert.title = "❌ config.json not found";
+  alert.message = "Please create a config.json file in your Scriptable root folder with your GitHub settings.";
+  alert.addAction("OK");
+  await alert.present();
+  return;
+}
+
+// --- Configuration  vars ---
+const GITHUB_USER = config.GITHUB_USER || "YourUser";
+const GITHUB_REPO = config.GITHUB_REPO || "scriptable";
+const BRANCH = config.BRANCH || "main";
+
+const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
+const githubToken = Keychain.get("github_token");
+
 // --- Load local & remote metadata ---
 const localMeta = loadJSON(metaFilePath);
 console.log("📄 Local meta loaded:", JSON.stringify(localMeta, null, 2));
 
 let remoteMeta;
 try {
-  remoteMeta = await fetchGitHubJSON("scripts-meta.json");
+  remoteMeta = await fetchGitHubJSON("config/scripts-meta.json");
   console.log("☁️ Remote meta loaded.");
 } catch (e) {
   const alert = new Alert();
