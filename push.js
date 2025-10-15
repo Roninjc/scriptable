@@ -1,47 +1,44 @@
 /**
  * 🧩 push.js
- * Uploads a Scriptable file to your GitHub repository and updates its version in versions.json.
- * 
+ * Uploads selected Scriptable scripts to your GitHub repository and updates scripts-meta.json.
+ *
  * Features:
- *  - Authenticates using your GitHub Personal Access Token stored in Keychain.
- *  - Prompts you to choose which file to upload.
- *  - Lets you choose the version bump type: major / minor / patch.
- *  - Updates both the script file and the meta/versions.json file in GitHub.
+ *  - Authenticates using GitHub token stored in Keychain ("github_token").
+ *  - Reads scripts-meta.json directly from the remote repo.
+ *  - Lets you choose multiple scripts to upload.
+ *  - Automatically updates version, type (first time only), and lastUpdated.
  *
  * Prerequisites:
- *  1️⃣ Run once in Scriptable: Keychain.set("github_token", "ghp_yourTokenHere")
- *  2️⃣ Update your GitHub username and repository name below.
+ *  1️⃣ Save your GitHub token once: Keychain.set("github_token", "ghp_xxx")
+ *  2️⃣ Update your GitHub username and repo below.
  */
 
-const GITHUB_USER = "TuUsuario"; // 👈 change this
+const GITHUB_USER = "YourUser";  // 👈 change this
 const GITHUB_REPO = "scriptable";
 const BRANCH = "main";
+const META_FILE = "scripts-meta.json";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
 const githubToken = Keychain.get("github_token");
+if (!githubToken) throw new Error("❌ Missing GitHub token in Keychain.");
 
+// --- Setup local access ---
 const fm = FileManager.iCloud();
 const dir = fm.documentsDirectory();
-const metaDir = fm.joinPath(dir, "meta");
-const versionsFile = fm.joinPath(metaDir, "versions.json");
 
-// Ensure meta folder exists
-if (!fm.fileExists(metaDir)) fm.createDirectory(metaDir, true);
-
-// Load or create versions.json
-let versions = {};
-if (fm.fileExists(versionsFile)) {
-  try {
-    versions = JSON.parse(fm.readString(versionsFile));
-  } catch (e) {
-    console.warn("Error reading versions file:", e);
-  }
-} else {
-  versions = {};
-  fm.writeString(versionsFile, JSON.stringify(versions, null, 2));
+// --- Fetch remote scripts-meta.json ---
+let meta = {};
+const metaUrl = `https://raw.githubusercontent.com/${githubRepo}/${BRANCH}/${META_FILE}`;
+try {
+  const req = new Request(metaUrl);
+  meta = await req.loadJSON();
+  console.log("✅ Loaded remote scripts-meta.json");
+} catch (e) {
+  console.warn("⚠️ Could not fetch remote meta file, starting fresh.");
+  meta = {};
 }
 
-// Multi-select files to upload
+// --- Get local .js files ---
 const files = fm.listContents(dir).filter(f => f.endsWith(".js"));
 if (files.length === 0) {
   const alert = new Alert();
@@ -52,87 +49,81 @@ if (files.length === 0) {
   return;
 }
 
-// keep track of selected files
+// --- Multi-select scripts ---
 let selected = new Set();
-
 while (true) {
   const menu = new Alert();
   menu.title = "Select scripts to push";
-  menu.message = "Tap a file to toggle selection.\nWhen done, tap 'Push Selected'.";
-  
-  // Add file entries with a checkmark if selected
-  files.forEach(f => {
-    const prefix = selected.has(f) ? "✅ " : "⬜️ ";
-    menu.addAction(prefix + f);
-  });
-  
+  menu.message = "Tap to toggle selection.\nThen tap 'Push Selected'.";
+  files.forEach(f => menu.addAction((selected.has(f) ? "✅ " : "⬜️ ") + f));
   menu.addAction("🚀 Push Selected");
   menu.addCancelAction("Cancel");
-  
   const choice = await menu.present();
   if (choice === -1) return; // cancel
-  if (choice === files.length) break; // push selected
-  
-  // toggle selection
+  if (choice === files.length) break; // push
   const chosen = files[choice];
-  if (selected.has(chosen)) selected.delete(chosen);
-  else selected.add(chosen);
+  selected.has(chosen) ? selected.delete(chosen) : selected.add(chosen);
 }
-
-if (selected.size === 0) {
-  const alert = new Alert();
-  alert.title = "No files selected";
-  alert.message = "Please select at least one script to upload.";
-  alert.addAction("OK");
-  await alert.present();
-  return;
-}
+if (selected.size === 0) return;
 
 const selectedFiles = Array.from(selected);
 
-// Bump version by type
+// --- Helper: bump version ---
 function bumpVersion(version, type) {
   const parts = version.split(".").map(Number);
   if (type === "major") {
-    parts[0]++;
-    parts[1] = 0;
-    parts[2] = 0;
+    parts[0]++; parts[1] = 0; parts[2] = 0;
   } else if (type === "minor") {
-    parts[1]++;
-    parts[2] = 0;
+    parts[1]++; parts[2] = 0;
   } else {
     parts[2]++;
   }
   return parts.join(".");
 }
 
-// Upload each file
+// --- Process each selected file ---
 for (const fileName of selectedFiles) {
   const filePath = fm.joinPath(dir, fileName);
   const content = fm.readString(filePath);
+  const existing = meta[fileName] || {};
 
-  let currentVersion = versions[fileName] || "0.0.0";
+  // Get or ask for script type (first time only)
+  let type = existing.type;
+  if (!type) {
+    const typeAlert = new Alert();
+    typeAlert.title = `Select type for ${fileName}`;
+    typeAlert.addAction("widget");
+    typeAlert.addAction("helper");
+    typeAlert.addCancelAction("Cancel");
+    const typeChoice = await typeAlert.present();
+    if (typeChoice === -1) continue;
+    type = ["widget", "helper"][typeChoice];
+  }
 
+  // Determine version bump
+  let currentVersion = existing.version || "0.0.0";
   const bump = new Alert();
-  bump.title = ` current version: ${currentVersion}`;
+  bump.title = `${fileName} current: v${currentVersion}`;
   bump.message = "Select version bump type:";
   bump.addAction("Major");
   bump.addAction("Minor");
   bump.addAction("Patch");
   bump.addCancelAction("Cancel");
   const bumpChoice = await bump.present();
-
-  if (bumpChoice === -1) {
-    console.log(`Skipped ${fileName}`);
-    continue;
-  }
-
-  const bumpTypes = ["major", "minor", "patch"];
-  const bumpType = bumpTypes[bumpChoice];
+  if (bumpChoice === -1) continue;
+  const bumpType = ["major", "minor", "patch"][bumpChoice];
   const newVersion = bumpVersion(currentVersion, bumpType);
-  console.log(`Pushing ${fileName} (v${currentVersion} → v${newVersion})`);
 
-  // Get SHA if file exists (required for updates)
+  const now = new Date().toISOString();
+
+  // Update meta info locally
+  meta[fileName] = {
+    version: newVersion,
+    type: type,
+    lastUpdated: now
+  };
+
+  // --- Upload script file to GitHub ---
   const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${encodeURIComponent(fileName)}`;
   let sha = null;
   try {
@@ -140,39 +131,63 @@ for (const fileName of selectedFiles) {
     req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
     const resp = await req.loadJSON();
     sha = resp.sha;
-  } catch (e) {
-    console.log(`File ${fileName} not found in repo (creating new).`);
+  } catch {
+    console.log(`🆕 Creating new file: ${fileName}`);
   }
 
-  // Upload request
-  try {
-    const req = new Request(apiUrl);
-    req.method = "PUT";
-    req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
-    req.body = JSON.stringify({
-      message: `Update ${fileName} to v${newVersion}`,
-      content: Data.fromString(content).toBase64String(),
-      sha: sha,
-      branch: BRANCH
-    });
+  const upload = new Request(apiUrl);
+  upload.method = "PUT";
+  upload.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+  upload.body = JSON.stringify({
+    message: `Update ${fileName} to v${newVersion}`,
+    content: Data.fromString(content).toBase64String(),
+    sha: sha,
+    branch: BRANCH
+  });
 
-    const res = await req.loadJSON();
-    if (req.response.statusCode >= 200 && req.response.statusCode < 300) {
-      console.log(`✅ Uploaded ${fileName} v${newVersion}`);
-      versions[fileName] = newVersion;
-    } else {
-      console.error(`❌ Failed to upload ${fileName}: ${JSON.stringify(res)}`);
-    }
-  } catch (e) {
-    console.error(`⚠️ Error uploading ${fileName}: ${e}`);
+  const res = await upload.loadJSON();
+  if (upload.response.statusCode >= 200 && upload.response.statusCode < 300) {
+    console.log(`✅ Uploaded ${fileName} v${newVersion}`);
+  } else {
+    console.error(`❌ Failed to upload ${fileName}: ${JSON.stringify(res)}`);
   }
 }
 
-// Save updated versions
-fm.writeString(versionsFile, JSON.stringify(versions, null, 2));
+// --- Upload updated scripts-meta.json ---
+console.log("📝 Uploading updated scripts-meta.json...");
+const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/${META_FILE}`;
+let metaSha = null;
+try {
+  const req = new Request(metaApiUrl);
+  req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+  const resp = await req.loadJSON();
+  metaSha = resp.sha;
+} catch {
+  console.log("🆕 Creating new scripts-meta.json...");
+}
 
+const metaUpload = new Request(metaApiUrl);
+metaUpload.method = "PUT";
+metaUpload.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+metaUpload.body = JSON.stringify({
+  message: "Update scripts-meta.json",
+  content: Data.fromString(JSON.stringify(meta, null, 2)).toBase64String(),
+  sha: metaSha,
+  branch: BRANCH
+});
+
+const metaRes = await metaUpload.loadJSON();
+if (metaUpload.response.statusCode >= 200 && metaUpload.response.statusCode < 300) {
+  console.log("✅ scripts-meta.json updated successfully");
+} else {
+  console.error(`❌ Failed to update scripts-meta.json: ${JSON.stringify(metaRes)}`);
+}
+
+// --- Done ---
 const doneAlert = new Alert();
 doneAlert.title = "✅ Upload complete";
-doneAlert.message = selectedFiles.map(f => `${f}: v${versions[f]}`).join("\n");
+doneAlert.message = selectedFiles
+  .map(f => `${f}: v${meta[f].version} (${meta[f].type})`)
+  .join("\n");
 doneAlert.addAction("OK");
 await doneAlert.present();

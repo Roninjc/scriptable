@@ -1,0 +1,27 @@
+{
+  "CountryEmoji": {
+    "version": "1.0.0",
+    "type": "helper",
+    "lastUpdated": "2024-06-20T00:00:00Z"
+  },
+  "SetWidgetBackground": {
+    "version": "1.0.0",
+    "type": "helper",
+    "lastUpdated": "2024-06-20T00:00:00Z"
+  },
+  "Countries a year": {
+    "version": "1.0.0",
+    "type": "widget",
+    "lastUpdated": "2024-06-20T00:00:00Z"
+  },
+  "Servers healthz": {
+    "version": "1.0.0",
+    "type": "widget",
+    "lastUpdated": "2024-06-20T00:00:00Z"
+  },
+  "Shopping list": {
+    "version": "1.0.0",
+    "type": "widget",
+    "lastUpdated": "2024-06-20T00:00:00Z"
+  }
+}
