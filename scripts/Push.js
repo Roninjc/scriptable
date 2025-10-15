@@ -187,7 +187,7 @@ for (const fileName of selectedFiles) {
 
 // --- Upload updated scripts-meta.json ---
 console.log("📝 Uploading updated scripts-meta.json...");
-const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/config/${META_FILE}`;
+const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/${META_FILE}`;
 let metaSha = null;
 try {
   const req = new Request(metaApiUrl);
