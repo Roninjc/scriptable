@@ -200,7 +200,7 @@ if (!selectedScripts.length) {
 
 // --- Download selected scripts ---
 for (const script of selectedScripts) {
-  const remotePath = (script.type === "helper" ? "helpers/" : "scripts/") + encodeURIComponent(script.name) + ".js";
+  const remotePath = script.type + "s/" + encodeURIComponent(script.name) + ".js";
 
   try {
     const content = await fetchGitHubFile(remotePath);

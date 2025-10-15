@@ -122,10 +122,11 @@ for (const fileName of selectedFiles) {
     typeAlert.title = `Select type for ${fileName}`;
     typeAlert.addAction("widget");
     typeAlert.addAction("helper");
+    typeAlert.addAction("script");
     typeAlert.addCancelAction("Cancel");
     const typeChoice = await typeAlert.present();
     if (typeChoice === -1) continue;
-    type = ["widget", "helper"][typeChoice];
+    type = ["widget", "helper", "script"][typeChoice];
   }
 
   // Determine version bump
@@ -152,7 +153,7 @@ for (const fileName of selectedFiles) {
   };
 
   // --- Upload script file to GitHub ---
-  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${encodeURIComponent(fileName)}`;
+  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${type}s/${encodeURIComponent(fileName)}`;
   let sha = null;
   try {
     const req = new Request(apiUrl);
@@ -183,7 +184,7 @@ for (const fileName of selectedFiles) {
 
 // --- Upload updated scripts-meta.json ---
 console.log("📝 Uploading updated scripts-meta.json...");
-const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/${META_FILE}`;
+const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/config/${META_FILE}`;
 let metaSha = null;
 try {
   const req = new Request(metaApiUrl);
