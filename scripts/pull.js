@@ -11,7 +11,7 @@
  *
  * Prerequisites:
  *  1️⃣ Keychain must contain your GitHub token:
- *      Keychain.set("github_token", "ghp_yourTokenHere")
+ *      Keychain.set("github_scriptable_token", "ghp_yourTokenHere")
  *  2️⃣ Update your GitHub username/repository below.
  */
 
@@ -91,7 +91,7 @@ const GITHUB_REPO = config.GITHUB_REPO || "scriptable";
 const BRANCH = config.BRANCH || "main";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
-const githubToken = Keychain.get("github_token");
+const githubToken = Keychain.get("github_scriptable_token");
 
 // --- Load local & remote metadata ---
 const localMeta = loadJSON(metaFilePath);

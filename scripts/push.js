@@ -3,13 +3,13 @@
  * Uploads selected Scriptable scripts to your GitHub repository and updates scripts-meta.json.
  *
  * Features:
- *  - Authenticates using GitHub token stored in Keychain ("github_token").
+ *  - Authenticates using GitHub token stored in Keychain ("github_scriptable_token").
  *  - Reads scripts-meta.json directly from the remote repo.
  *  - Lets you choose multiple scripts to upload.
  *  - Automatically updates version, type (first time only), and lastUpdated.
  *
  * Prerequisites:
- *  1️⃣ Save your GitHub token once: Keychain.set("github_token", "ghp_xxx")
+ *  1️⃣ Save your GitHub token once: Keychain.set("github_scriptable_token", "ghp_xxx")
  *  2️⃣ Update your GitHub username and repo below.
  */
 
@@ -47,7 +47,7 @@ const BRANCH = config.BRANCH || "main";
 const META_FILE = "scripts-meta.json";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
-const githubToken = Keychain.get("github_token");
+const githubToken = Keychain.get("github_scriptable_token");
 if (!githubToken) throw new Error("❌ Missing GitHub token in Keychain.");
 
 // --- Fetch remote scripts-meta.json ---
