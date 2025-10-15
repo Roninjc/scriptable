@@ -1,7 +1,7 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
-/** ooooooooooold
+/**
  * 🧩 push.js
  * Uploads selected Scriptable scripts to your GitHub repository and updates scripts-meta.json.
  *
@@ -57,7 +57,6 @@ if (!githubToken) throw new Error("❌ Missing GitHub token in Keychain.");
 let meta = {};
 const metaUrl = `https://raw.githubusercontent.com/${githubRepo}/${BRANCH}/${META_FILE}`;
 try {
-  console.log(metaUrl)
   const req = new Request(metaUrl);
   meta = await req.loadJSON();
   console.log("✅ Loaded remote scripts-meta.json");
