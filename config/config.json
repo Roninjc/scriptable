@@ -1,5 +1,6 @@
 {
   "GITHUB_USER": "RoninJc",
   "GITHUB_REPO": "scriptable",
-  "BRANCH": "main"
+  "BRANCH": "main",
+  "META_FILE": "config/scripts-meta.json"
 }

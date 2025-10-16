@@ -3,6 +3,7 @@
 // icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 push.js
+ * Only to use inside Scriptable app.
  * Uploads selected Scriptable scripts to your GitHub repository and updates scripts-meta.json.
  *
  * Features:
@@ -16,6 +17,22 @@
  *  2️⃣ Update your GitHub username and repo below.
  */
 
+const { computeHash, errorAlert, fetchGitHubJSON, loadFmJSON } = importModule('helpers/Git');
+
+// --- Helper: bump version ---
+function bumpVersion(version, type) {
+  const parts = version.split(".").map(Number);
+  if (type === "major") {
+    parts[0]++; parts[1] = 0; parts[2] = 0;
+  } else if (type === "minor") {
+    parts[1]++; parts[2] = 0;
+  } else {
+    parts[2]++;
+  }
+  return parts.join(".");
+}
+
+// --- Main Script ---
 const fm = FileManager.iCloud();
 const dir = fm.documentsDirectory();
 const configPath = fm.joinPath(dir, "config/config.json");
@@ -26,19 +43,11 @@ if (fm.fileExists(configPath)) {
   try {
     config = JSON.parse(fm.readString(configPath));
   } catch (e) {
-    const alert = new Alert();
-    alert.title = "❌ Error parsing config.json";
-    alert.message = e.toString();
-    alert.addAction("OK");
-    await alert.present();
+    errorAlert("❌ Error parsing config.json", e.toString());
     return;
   }
 } else {
-  const alert = new Alert();
-  alert.title = "❌ config.json not found";
-  alert.message = "Please create a config.json file in your Scriptable root folder with your GitHub settings.";
-  alert.addAction("OK");
-  await alert.present();
+  errorAlert("❌ Missing config.json", "Please create config/config.json with your GitHub settings.");
   return;
 }
 
@@ -46,38 +55,62 @@ if (fm.fileExists(configPath)) {
 const GITHUB_USER = config.GITHUB_USER || "YourUser";
 const GITHUB_REPO = config.GITHUB_REPO || "scriptable";
 const BRANCH = config.BRANCH || "main";
-
-const META_FILE = "config/scripts-meta.json";
+const META_FILE = config.META_FILE || "config/scripts-meta.json";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
 const githubToken = Keychain.get("github_scriptable_token");
 if (!githubToken) throw new Error("❌ Missing GitHub token in Keychain.");
 
-// --- Fetch remote scripts-meta.json ---
-let meta = {};
-const metaUrl = `https://raw.githubusercontent.com/${githubRepo}/${BRANCH}/${META_FILE}`;
+const githubReqHeader = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+const now = new Date().toISOString();
+
+// --- Load local & remote metadata ---
+const localMeta = loadFmJSON(fm, metaFilePath);
+
+let remoteMeta;
 try {
-  const req = new Request(metaUrl);
-  meta = await req.loadJSON();
-  console.log("✅ Loaded remote scripts-meta.json");
+  remoteMeta = await fetchGitHubJSON(githubToken, githubRepo, META_FILE, BRANCH);
+  console.log("☁️ Remote meta loaded.");
 } catch (e) {
-  const alert = new Alert();
-  alert.title = "❌ Error fetching remote meta";
-  alert.message = e.toString();
-  alert.addAction("OK");
-  await alert.present();
+  errorAlert("❌ Error fetching remote meta", e.toString());
   return;
 }
 
 // --- Get local .js files ---
 const files = fm.listContents(dir).filter(f => f.endsWith(".js"));
 if (files.length === 0) {
-  const alert = new Alert();
-  alert.title = "No .js files found";
-  alert.message = "Make sure you have scripts in your iCloud Scriptable directory.";
-  alert.addAction("OK");
-  await alert.present();
+  errorAlert("❌ No .js files found", "Please add some .js files to your Scriptable root folder.");
   return;
+}
+
+// --- Updated local script-meta hashes ---
+for (const file of files) {
+  const path = fm.joinPath(dir, file);
+  try {
+    const content = fm.readString(path);
+    const hash = computeHash(content);
+    const baseName = file.replace(/\.js$/, "");
+    if (!localMeta[baseName]) localMeta[baseName] = {};
+
+    const previousHash = localMeta[baseName].hash || null;
+    if (previousHash !== hash) {
+      localMeta[baseName] = {
+        ...localMeta[baseName],
+        hash,
+        lastUpdated: now,
+      };
+    }
+  } catch (e) {
+    errorAlert("❌ Error reading file", `Error reading ${file}: ${e.toString()}`);
+    return;
+  }
+
+  try {
+    fm.writeString(metaFilePath, JSON.stringify(localMeta, null, 2));
+  } catch (e) {
+    errorAlert("❌ Error saving scripts-meta.json", e.toString());
+    return;
+  }
 }
 
 // --- Multi-select scripts ---
@@ -98,19 +131,6 @@ while (true) {
 if (selected.size === 0) return;
 
 const selectedFiles = Array.from(selected);
-
-// --- Helper: bump version ---
-function bumpVersion(version, type) {
-  const parts = version.split(".").map(Number);
-  if (type === "major") {
-    parts[0]++; parts[1] = 0; parts[2] = 0;
-  } else if (type === "minor") {
-    parts[1]++; parts[2] = 0;
-  } else {
-    parts[2]++;
-  }
-  return parts.join(".");
-}
 
 // --- Process each selected file ---
 for (const fileName of selectedFiles) {
@@ -148,8 +168,6 @@ for (const fileName of selectedFiles) {
   const bumpType = ["major", "minor", "patch"][bumpChoice];
   const newVersion = bumpVersion(currentVersion, bumpType);
 
-  const now = new Date().toISOString();
-
   // Update meta info locally
   meta[fileName] = {
     version: newVersion,
@@ -157,12 +175,12 @@ for (const fileName of selectedFiles) {
     lastUpdated: now
   };
 
-  // --- Upload script file to GitHub ---
+  // Upload script file to GitHub
   const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${type}s/${encodeURIComponent(fileName)}`;
   let sha = null;
   try {
     const req = new Request(apiUrl);
-    req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+    req.headers = githubReqHeader;
     const resp = await req.loadJSON();
     sha = resp.sha;
   } catch {
@@ -171,7 +189,7 @@ for (const fileName of selectedFiles) {
 
   const upload = new Request(apiUrl);
   upload.method = "PUT";
-  upload.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+  upload.headers = githubReqHeader;
   upload.body = JSON.stringify({
     message: `Update ${fileName} to v${newVersion}`,
     content: Data.fromString(content).toBase64String(),
@@ -193,40 +211,34 @@ const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/${META_F
 let metaSha = null;
 try {
   const req = new Request(metaApiUrl);
-  req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
+  req.headers = githubReqHeader;
   const resp = await req.loadJSON();
   metaSha = resp.sha;
-} catch {
+} catch (e) {
+  console.error(`❌ Error fetching scripts-meta.json: ${e.toString()}`);
   console.log("🆕 Creating new scripts-meta.json...");
 }
 
-const metaUpload = new Request(metaApiUrl);
-metaUpload.method = "PUT";
-metaUpload.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePush" };
-metaUpload.body = JSON.stringify({
-  message: "Update scripts-meta.json",
-  content: Data.fromString(JSON.stringify(meta, null, 2)).toBase64String(),
-  sha: metaSha,
-  branch: BRANCH
-});
-
-const metaRes = await metaUpload.loadJSON();
-if (metaUpload.response.statusCode >= 200 && metaUpload.response.statusCode < 300) {
-  try {
-    fm.writeString(metaFilePath, JSON.stringify(meta, null, 2));
-  } catch (e) {
-    const errorAlert = new Alert();
-    errorAlert.title = "❌ Error saving scripts-meta.json";
-    errorAlert.message = e.toString();
-    errorAlert.addAction("OK");
-    await errorAlert.present();
+try {
+  const metaUpload = new Request(metaApiUrl);
+  metaUpload.method = "PUT";
+  metaUpload.headers = githubReqHeader;
+  metaUpload.body = JSON.stringify({
+    message: "Update scripts-meta.json",
+    content: Data.fromString(JSON.stringify(meta, null, 2)).toBase64String(),
+    sha: metaSha,
+    branch: BRANCH
+  });
+  
+  const metaRes = await metaUpload.loadJSON();
+  if (metaUpload.response.statusCode >= 200 && metaUpload.response.statusCode < 300) {
+    console.log("✅ Uploaded scripts-meta.json");
+  } else {
+    throw new Error(`JSON response: ${JSON.stringify(metaRes)}`);
   }
-} else {
-  const errorAlert = new Alert();
-  errorAlert.title = "❌ Failed to upload scripts-meta.json";
-  errorAlert.message = JSON.stringify(metaRes);
-  errorAlert.addAction("OK");
-  await errorAlert.present();
+} catch (e) {
+  errorAlert("❌ Error uploading scripts-meta.json", e.toString());
+  return;
 }
 
 // --- Done ---

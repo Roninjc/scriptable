@@ -6,6 +6,7 @@
 // icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 pull.js
+ * Only to use inside Scriptable app.
  * Synchronizes your local Scriptable scripts with the GitHub repository.
  *
  * Features:
@@ -16,50 +17,32 @@
  *  - Updates local scripts-meta.json automatically.
  *
  * Prerequisites:
- *  1️⃣ Keychain must contain your GitHub token:
- *      Keychain.set("github_scriptable_token", "ghp_yourTokenHere")
+ *  1️⃣ Keychain must contain your GitHub token: Keychain.set("github_scriptable_token", "ghp_xxx")
  *  2️⃣ Update your GitHub username/repository below.
  */
 
-const fm = FileManager.iCloud();
-const dir = fm.documentsDirectory();
-const configPath = fm.joinPath(dir, "config/config.json");
-const metaFilePath = fm.joinPath(dir, "config/scripts-meta.json");
+const { computeHash, errorAlert, fetchGitHubJSON, loadFmJSON } = importModule('helpers/Git');
 
 // --- Helper Functions ---
-function loadJSON(path) {
-  if (!fm.fileExists(path)) return {};
-  try {
-    return JSON.parse(fm.readString(path));
-  } catch (e) {
-    console.error(`Error parsing JSON at ${path}:`, e);
-    return {};
-  }
-}
+// async function fetchGitHubJSON(path) {
+//   const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${path}?ref=${BRANCH}`;
+//   const req = new Request(apiUrl);
+//   req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePull" };
+//   const res = await req.loadJSON();
+//   if (!res.content) throw new Error(`No content found for ${path}`);
+//   const base64Content = res.content.replace(/\n/g, '');
+//   const decoded = Data.fromBase64String(base64Content).toRawString();
+//   return JSON.parse(decoded);
+// }
 
-function saveJSON(path, data) {
-  fm.writeString(path, JSON.stringify(data, null, 2));
-}
-
-async function fetchGitHubJSON(path) {
-  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${path}?ref=${BRANCH}`;
-  const req = new Request(apiUrl);
-  req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePull" };
-  const res = await req.loadJSON();
-  if (!res.content) throw new Error(`No content found for ${path}`);
-  const base64Content = res.content.replace(/\n/g, '');
-  const decoded = Data.fromBase64String(base64Content).toRawString();
-  return JSON.parse(decoded);
-}
-
-async function fetchGitHubFile(path) {
-  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${path}?ref=${BRANCH}`;
-  const req = new Request(apiUrl);
-  req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePull" };
-  const res = await req.loadJSON();
-  if (!res.content) throw new Error(`No content found at ${path}`);
-  return Data.fromBase64String(res.content).toRawString();
-}
+// async function fetchGitHubFile(path) {
+//   const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${path}?ref=${BRANCH}`;
+//   const req = new Request(apiUrl);
+//   req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePull" };
+//   const res = await req.loadJSON();
+//   if (!res.content) throw new Error(`No content found at ${path}`);
+//   return Data.fromBase64String(res.content).toRawString();
+// }
 
 function compareVersions(a, b) {
   const pa = a.split(".").map(Number);
@@ -71,24 +54,22 @@ function compareVersions(a, b) {
   return 0;
 }
 
+// --- Main Script ---
+const fm = FileManager.iCloud();
+const dir = fm.documentsDirectory();
+const configPath = fm.joinPath(dir, "config/config.json");
+const metaFilePath = fm.joinPath(dir, "config/scripts-meta.json");
+
 let config = {};
 if (fm.fileExists(configPath)) {
   try {
     config = JSON.parse(fm.readString(configPath));
   } catch (e) {
-    const alert = new Alert();
-    alert.title = "❌ Error parsing config.json";
-    alert.message = e.toString();
-    alert.addAction("OK");
-    await alert.present();
+    errorAlert("❌ Error parsing config.json", e.toString());
     return;
   }
 } else {
-  const alert = new Alert();
-  alert.title = "❌ config.json not found";
-  alert.message = "Please create a config.json file in your Scriptable root folder with your GitHub settings.";
-  alert.addAction("OK");
-  await alert.present();
+  errorAlert("❌ config.json not found", "Please create a config.json file in your Scriptable root folder with your GitHub settings.");
   return;
 }
 
@@ -96,24 +77,21 @@ if (fm.fileExists(configPath)) {
 const GITHUB_USER = config.GITHUB_USER || "YourUser";
 const GITHUB_REPO = config.GITHUB_REPO || "scriptable";
 const BRANCH = config.BRANCH || "main";
+const META_FILE = config.META_FILE || "config/scripts-meta.json";
 
 const githubRepo = `${GITHUB_USER}/${GITHUB_REPO}`;
 const githubToken = Keychain.get("github_scriptable_token");
 
 // --- Load local & remote metadata ---
-const localMeta = loadJSON(metaFilePath);
+const localMeta = loadFmJSON(fm, metaFilePath);
 console.log("📄 Local meta loaded:", JSON.stringify(localMeta, null, 2));
 
 let remoteMeta;
 try {
-  remoteMeta = await fetchGitHubJSON("config/scripts-meta.json");
+  remoteMeta = await fetchGitHubJSON(githubToken, githubRepo, META_FILE, BRANCH);
   console.log("☁️ Remote meta loaded.");
 } catch (e) {
-  const alert = new Alert();
-  alert.title = "❌ Error fetching remote meta";
-  alert.message = e.toString();
-  alert.addAction("OK");
-  await alert.present();
+  errorAlert("❌ Error fetching remote meta", e.toString());
   return;
 }
 
@@ -121,34 +99,51 @@ try {
 const updates = [];
 const newScripts = [];
 const conflicts = [];
+const skipped = [];
 
 for (const [name, remoteData] of Object.entries(remoteMeta)) {
-  const localData = localMeta[name];
+  const localData = localMeta[name] || {};
   const localPath = fm.joinPath(dir, `${name}.js`);
   const existsLocally = fm.fileExists(localPath);
 
+  const localSavedHash = localData.hash || null;
+  const localGeneratedHash = existsLocally ? computeHash(fm.readString(localPath)) : null;
+  const remoteHash = remoteData.hash || null;
+
+  const vLocal = localData.version || "0.0.0";
+  const vRemote = remoteData.version || "0.0.0";
+  const cmp = compareVersions(vRemote, vLocal);
+
   if (!existsLocally) {
-    newScripts.push({ name, ...remoteData });
-    continue;
+    newScripts.push({ name, ...remoteData, reason: "missing locally" });
   }
-
-  if (!localData) {
-    updates.push({ name, ...remoteData, reason: "missing metadata" });
-    continue;
+  else if (localGeneratedHash === remoteHash) {
+    skipped.push({ name, reason: "identical content" });
   }
-
-  const cmp = compareVersions(remoteData.version, localData.version);
-  const localModDate = fm.modificationDate(localPath);
-  const remoteUpdated = new Date(remoteData.lastUpdated);
-
-  if (cmp > 0) {
-    updates.push({ name, ...remoteData, reason: "newer version" });
-  } else if (localModDate > remoteUpdated && cmp === 0) {
-    conflicts.push({ name, ...remoteData, reason: "local newer" });
+  else if (cmp > 0) {
+    if (localGeneratedHash !== localSavedHash) {
+      conflicts.push({ name, ...remoteData, reason: "remote newer version + local edits" });
+    } else {
+      updates.push({ name, ...remoteData, reason: "remote newer version" });
+    }
+  }
+  else if (cmp === 0) {
+    if (localGeneratedHash !== remoteHash) {
+      conflicts.push({ name, ...remoteData, reason: "same version but different content" });
+    } else {
+      skipped.push({ name, reason: "same version + identical content" });
+    }
+  }
+  else if (cmp < 0) {
+    if (localGeneratedHash !== remoteHash) {
+      conflicts.push({ name, ...remoteData, reason: "local newer version + content differs" });
+    } else {
+      skipped.push({ name, reason: "local newer version but identical content" });
+    }
   }
 }
 
-console.log(`🆕 New: ${newScripts.length}, ⬆️ Updates: ${updates.length}, ⚠️ Conflicts: ${conflicts.length}`);
+console.log(`🆕 New: ${newScripts.length}, ⬆️ Updates: ${updates.length}, ⚠️ Conflicts: ${conflicts.length}, ⏭️ Skipped: ${skipped.length}`);
 
 // --- Main menu ---
 const menu = new Alert();
@@ -247,7 +242,7 @@ for (const script of selectedScripts) {
 }
 
 // --- Save local meta ---
-saveJSON(metaFilePath, localMeta);
+fm.writeString(metaFilePath, JSON.stringify(localMeta, null, 2));
 
 // --- Done ---
 const done = new Alert();

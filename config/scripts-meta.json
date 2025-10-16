@@ -25,7 +25,7 @@
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
   "Push": {
-    "version": "1.0.1",
+    "version": "2.0.0",
     "type": "script",
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
@@ -35,7 +35,7 @@
     "lastUpdated": "2025-10-15T00:00:00Z"
   },
   "Push.js": {
-    "version": "1.0.2",
+    "version": "2.0.0",
     "type": "script",
     "lastUpdated": "2025-10-16T10:31:50.334Z"
   }
