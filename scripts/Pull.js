@@ -1,6 +1,9 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 pull.js
  * Synchronizes your local Scriptable scripts with the GitHub repository.
@@ -155,12 +158,17 @@ let message = "";
 if (newScripts.length) message += `🆕 New: ${newScripts.map(s => s.name).join(", ")}\n`;
 if (updates.length) message += `⬆️ Updates: ${updates.map(s => s.name).join(", ")}\n`;
 if (conflicts.length) message += `⚠️ Conflicts: ${conflicts.map(s => s.name).join(", ")}\n`;
+if (!(newScripts.length + updates.length > 0)) message += "No possible updates.";
 if (!message) message = "✅ All scripts up to date!";
 
 menu.message = message;
-menu.addAction("Update All");
-menu.addAction("Choose");
-menu.addCancelAction("Cancel");
+if (newScripts.length + updates.length > 0) {
+  menu.addAction("Update All");
+  menu.addAction("Choose");
+  menu.addCancelAction("Cancel");
+} else {
+  menu.addCancelAction("OK");
+}
 
 const choice = await menu.present();
 if (choice === -1) return;
@@ -170,21 +178,38 @@ if (choice === 0) {
   selectedScripts = [...newScripts, ...updates];
 } else if (choice === 1) {
   const allOptions = [...newScripts, ...updates];
-  let selected = new Set();
+  if (!allOptions.length) {
+    const alert = new Alert();
+    alert.title = "✅ Nothing to update";
+    alert.message = "All scripts are already up to date.";
+    alert.addAction("OK");
+    await alert.present();
+    return;
+  }
 
-  while (true) {
+  const selected = new Set();
+
+  let doneSelecting = false;
+  while (!doneSelecting) {
     const pick = new Alert();
     pick.title = "Select scripts to update";
     pick.message = "Tap to toggle selection.\nWhen done, tap 'Download Selected'.";
-    allOptions.forEach(s => {
+
+    for (const s of allOptions) {
       const prefix = selected.has(s.name) ? "✅ " : "⬜️ ";
       pick.addAction(prefix + s.name);
-    });
+    }
+
     pick.addAction("⬇️ Download Selected");
     pick.addCancelAction("Cancel");
     const res = await pick.present();
+
     if (res === -1) return;
-    if (res === allOptions.length) break;
+
+    if (res === allOptions.length) {
+      doneSelecting = true;
+      continue;
+    }
 
     const chosen = allOptions[res].name;
     if (selected.has(chosen)) selected.delete(chosen);
