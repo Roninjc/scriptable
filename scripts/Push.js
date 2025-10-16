@@ -116,7 +116,9 @@ function bumpVersion(version, type) {
 for (const fileName of selectedFiles) {
   const filePath = fm.joinPath(dir, fileName);
   const content = fm.readString(filePath);
-  const existing = meta[fileName] || {};
+
+  const parsedFileName = fileName.replace(/\.js$/, "");
+  const existing = meta[parsedFileName] || {};
 
   // Get or ask for script type (first time only)
   let type = existing.type;
@@ -187,7 +189,7 @@ for (const fileName of selectedFiles) {
 
 // --- Upload updated scripts-meta.json ---
 console.log("📝 Uploading updated scripts-meta.json...");
-const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/${META_FILE}`;
+const metaApiUrl = `https://api.github.com/repos/${githubRepo}/contents/config/${META_FILE}`;
 let metaSha = null;
 try {
   const req = new Request(metaApiUrl);
