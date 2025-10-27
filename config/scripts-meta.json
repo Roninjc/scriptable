@@ -27,16 +27,11 @@
   "Push": {
     "version": "2.0.0",
     "type": "script",
-    "lastUpdated": "2025-10-15T00:00:00Z"
+    "lastUpdated": "2025-10-16T10:31:50.334Z"
   },
   "SetWidgetBackground": {
     "version": "1.0.0",
     "type": "helper",
     "lastUpdated": "2025-10-15T00:00:00Z"
-  },
-  "Push.js": {
-    "version": "2.0.0",
-    "type": "script",
-    "lastUpdated": "2025-10-16T10:31:50.334Z"
   }
 }
