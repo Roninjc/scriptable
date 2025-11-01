@@ -2,6 +2,8 @@
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-blue; icon-glyph: magic;
 
+// NOOOOTE
+
 module.exports.computeHash = (str) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
