@@ -1,7 +1,11 @@
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: deep-blue; icon-glyph: flag;
 /**
  * List of country names with their ISO codes and corresponding flag emojis
  * Used in the "Countries a year" widget
  */
+
 module.exports = [
     { "country": "Afghanistan", "isoCountryCode": "AF", "emojiCode": "\uD83C\uDDE6\uD83C\uDDEB" },
     { "country": "Albania", "isoCountryCode": "AL", "emojiCode": "\uD83C\uDDE6\uD83C\uDDF1" },
