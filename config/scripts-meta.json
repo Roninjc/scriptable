@@ -18,9 +18,9 @@
     "hash": "-6779ab7b"
   },
   "Countries a year": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "widget",
-    "lastUpdated": "2025-11-01T16:49:52.178Z",
+    "lastUpdated": "2025-11-01T17:10:11.860Z",
     "hash": "-72bcdea"
   },
   "Servers healthz": {
@@ -44,5 +44,25 @@
   "Git": {
     "hash": "-4106cb31",
     "lastUpdated": "2025-11-01T16:38:36.543Z"
+  },
+  "Shared frame": {
+    "hash": "-3eef1ed2",
+    "lastUpdated": "2025-11-01T17:10:11.860Z"
+  },
+  "Translate": {
+    "hash": "-1003da32",
+    "lastUpdated": "2025-11-01T17:10:11.860Z"
+  },
+  "Widget template": {
+    "hash": "-6f2ce02",
+    "lastUpdated": "2025-11-01T17:10:11.860Z"
+  },
+  "Entur-utils": {
+    "hash": "-76414623",
+    "lastUpdated": "2025-11-01T17:10:11.860Z"
+  },
+  "Transparent & Blurred Widgets": {
+    "hash": "-2e597ba3",
+    "lastUpdated": "2025-11-01T17:10:11.860Z"
   }
 }
