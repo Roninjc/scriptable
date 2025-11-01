@@ -1,6 +1,6 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
-// icon-color: pink; icon-glyph: image;
+// icon-color: deep-blue; icon-glyph: image;
 /**
  * Function to be called from a widget script to set widget background based on widget parameter
  * or fallback to default background color
@@ -10,6 +10,7 @@
  * - a color name or hex code to set a solid background color
  * - nothing, to fallback to a default background color
  */
+
 module.exports.setWidgetBackground = async (widget) => {
   if (!widget) {
     console.warn('No widget received')
