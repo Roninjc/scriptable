@@ -256,7 +256,7 @@ try {
 const doneAlert = new Alert();
 doneAlert.title = "✅ Upload complete";
 doneAlert.message = selectedFiles
-  .map(f => `${f}: v${localMeta[f]?.version} (${localMeta[f]?.type})`)
+  .map(f => `${f.replace(/\.js$/, "")}: v${localMeta[f.replace(/\.js$/, "")]?.version} (${localMeta[f.replace(/\.js$/, "")]?.type})`)
   .join("\n");
 doneAlert.addAction("OK");
 await doneAlert.present();
