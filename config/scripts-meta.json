@@ -12,10 +12,10 @@
     "hash": "51dbd10b"
   },
   "Pull": {
-    "version": "1.1.0",
+    "version": "1.1.1",
     "type": "script",
-    "lastUpdated": "2025-11-01T17:45:02.088Z",
-    "hash": "-2a6a0319"
+    "lastUpdated": "2025-11-01T17:55:26.102Z",
+    "hash": "-d990967"
   },
   "Countries a year": {
     "version": "1.0.3",
@@ -38,13 +38,13 @@
   "SetWidgetBackground": {
     "version": "1.0.1",
     "type": "helper",
-    "lastUpdated": "2025-11-01T16:38:36.543Z",
-    "hash": "-138842bb"
+    "lastUpdated": "2025-11-01T17:55:26.102Z",
+    "hash": "14cb990f"
   },
   "Git": {
-    "hash": "-a96c583",
+    "hash": "-a96c582",
     "lastUpdated": "2025-11-01T17:51:18.849Z",
-    "version": "0.2.3",
+    "version": "0.2.2",
     "type": "helper"
   },
   "Shared frame": {
