@@ -1,6 +1,9 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 pull.js
  * Only to use inside Scriptable app.
@@ -18,7 +21,7 @@
  *  2️⃣ Update your GitHub username/repository below.
  */
 
-const { computeHash, errorAlert, fetchGitHubJSON, loadFmJSON } = importModule('Git');
+const { computeHash, errorAlert, fetchGitHubFile, fetchGitHubJSON, loadFmJSON } = importModule('Git');
 
 // --- Helper Functions ---
 // async function fetchGitHubJSON(path) {
@@ -110,6 +113,7 @@ for (const [name, remoteData] of Object.entries(remoteMeta)) {
   const vLocal = localData.version || "0.0.0";
   const vRemote = remoteData.version || "0.0.0";
   const cmp = compareVersions(vRemote, vLocal);
+  console.log(`📄 Comparing ${name}: v${vLocal} (local) vs v${vRemote} (remote) cmp: ${cmp > 0}`);
 
   if (!existsLocally) {
     newScripts.push({ name, ...remoteData, reason: "missing locally" });
