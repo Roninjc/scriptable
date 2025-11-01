@@ -14,6 +14,7 @@
  *   }
  * ]
  */
+
 const { setWidgetBackground } = importModule('SetWidgetBackground')
 
 let servers = []
