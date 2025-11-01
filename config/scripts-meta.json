@@ -42,9 +42,9 @@
     "hash": "14cb990f"
   },
   "Push.js": {
-    "version": "1.0.2",
+    "version": "1.1.0",
     "type": "script",
-    "lastUpdated": "2025-10-16T10:31:50.334Z"
+    "lastUpdated": "2025-11-01T16:11:13.873Z"
   },
   "Shared frame": {
     "hash": "-3eef1ed2",
@@ -82,9 +82,19 @@
     "hash": "3ffc8e79",
     "lastUpdated": "2025-11-01T15:34:03.322Z"
   },
-  "Countries a year.js": {
+  "Servers healthz.js": {
     "version": "1.1.0",
     "type": "widget",
-    "lastUpdated": "2025-11-01T15:43:21.925Z"
+    "lastUpdated": "2025-11-01T16:11:13.873Z"
+  },
+  "SetWidgetBackground.js": {
+    "version": "1.1.0",
+    "type": "helper",
+    "lastUpdated": "2025-11-01T16:11:13.873Z"
+  },
+  "Git.js": {
+    "version": "0.1.0",
+    "type": "helper",
+    "lastUpdated": "2025-11-01T16:11:13.873Z"
   }
 }
