@@ -26,13 +26,13 @@
   "Servers healthz": {
     "version": "1.1.0",
     "type": "widget",
-    "lastUpdated": "2025-11-01T16:31:15.036Z"
+    "lastUpdated": "2025-11-01T16:31:49.415Z",
+    "hash": "25ab8f47"
   },
   "Push": {
-    "version": "1.0.1",
+    "version": "1.1.0",
     "type": "script",
-    "lastUpdated": "2025-11-01T16:31:15.036Z",
-    "hash": "15501ab3"
+    "lastUpdated": "2025-11-01T16:31:49.415Z"
   },
   "SetWidgetBackground": {
     "version": "1.0.0",
