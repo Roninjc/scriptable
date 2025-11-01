@@ -41,45 +41,8 @@
     "lastUpdated": "2025-11-01T16:38:36.543Z",
     "hash": "-138842ba"
   },
-  "Push.js": {
-    "version": "1.0.2",
-    "type": "script",
-    "lastUpdated": "2025-10-16T10:31:50.334Z"
-  },
-  "Shared frame": {
-    "hash": "-3eef1ed2",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "Untitled Script 1": {
-    "hash": "-295f577e",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "Translate": {
-    "hash": "-1003da32",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "Widget template": {
-    "hash": "-6f2ce02",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "Entur-utils": {
-    "hash": "-76414623",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "What is my Elevation": {
-    "hash": "-1f0ca8df",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
-  "Transparent & Blurred Widgets": {
-    "hash": "-2e597ba3",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
-  },
   "Git": {
     "hash": "-4106cb31",
     "lastUpdated": "2025-11-01T16:38:36.543Z"
-  },
-  "Weather Cal Widget Builder": {
-    "hash": "3ffc8e79",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
   }
 }
