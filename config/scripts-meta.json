@@ -24,15 +24,15 @@
     "hash": "-72bcdea"
   },
   "Servers healthz": {
-    "version": "1.0.1",
+    "version": "1.1.0",
     "type": "widget",
-    "lastUpdated": "2025-11-01T16:20:27.864Z"
+    "lastUpdated": "2025-11-01T16:22:53.847Z"
   },
   "Push": {
     "version": "1.0.1",
     "type": "script",
-    "lastUpdated": "2025-11-01T16:20:27.864Z",
-    "hash": "568b43b8"
+    "lastUpdated": "2025-11-01T16:22:53.847Z",
+    "hash": "-19c569e"
   },
   "SetWidgetBackground": {
     "version": "1.0.0",
