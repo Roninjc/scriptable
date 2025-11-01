@@ -1,6 +1,9 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 push.js
  * Only to use inside Scriptable app.
@@ -17,7 +20,7 @@
  *  2️⃣ Update your GitHub username and repo below.
  */
 
-const { computeHash, errorAlert, fetchGitHubJSON, loadFmJSON } = importModule('helpers/Git');
+const { computeHash, errorAlert, fetchGitHubJSON, loadFmJSON } = importModule('Git');
 
 // --- Helper: bump version ---
 function bumpVersion(version, type) {
@@ -138,7 +141,7 @@ for (const fileName of selectedFiles) {
   const content = fm.readString(filePath);
 
   const parsedFileName = fileName.replace(/\.js$/, "");
-  const existing = meta[parsedFileName] || {};
+  const existing = localMeta[parsedFileName] || {};
 
   // Get or ask for script type (first time only)
   let type = existing.type;
@@ -169,7 +172,7 @@ for (const fileName of selectedFiles) {
   const newVersion = bumpVersion(currentVersion, bumpType);
 
   // Update meta info locally
-  meta[fileName] = {
+  localMeta[fileName] = {
     version: newVersion,
     type: type,
     lastUpdated: now
@@ -225,7 +228,7 @@ try {
   metaUpload.headers = githubReqHeader;
   metaUpload.body = JSON.stringify({
     message: "Update scripts-meta.json",
-    content: Data.fromString(JSON.stringify(meta, null, 2)).toBase64String(),
+    content: Data.fromString(JSON.stringify(localMeta, null, 2)).toBase64String(),
     sha: metaSha,
     branch: BRANCH
   });
@@ -245,7 +248,7 @@ try {
 const doneAlert = new Alert();
 doneAlert.title = "✅ Upload complete";
 doneAlert.message = selectedFiles
-  .map(f => `${f}: v${meta[f].version} (${meta[f].type})`)
+  .map(f => `${f}: v${localMeta[f].version} (${localMeta[f].type})`)
   .join("\n");
 doneAlert.addAction("OK");
 await doneAlert.present();
