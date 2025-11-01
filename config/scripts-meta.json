@@ -14,8 +14,8 @@
   "Pull": {
     "version": "1.0.0",
     "type": "script",
-    "lastUpdated": "2025-11-01T15:34:03.322Z",
-    "hash": "-6779ab7b"
+    "lastUpdated": "2025-11-01T17:30:46.041Z",
+    "hash": "4d4d753c"
   },
   "Countries a year": {
     "version": "1.0.3",
@@ -42,9 +42,9 @@
     "hash": "-138842ba"
   },
   "Git": {
-    "hash": "-4106cb42",
-    "lastUpdated": "2025-11-01T17:12:01.663Z",
-    "version": "0.1.1",
+    "hash": "f75ce58",
+    "lastUpdated": "2025-11-01T17:30:46.041Z",
+    "version": "0.2.0",
     "type": "helper"
   },
   "Shared frame": {
