@@ -4,6 +4,9 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 push.js
  * Only to use inside Scriptable app.
@@ -147,7 +150,7 @@ for (const fileName of selectedFiles) {
   let type = existing.type;
   if (!type) {
     const typeAlert = new Alert();
-    typeAlert.title = `Select type for ${fileName}`;
+    typeAlert.title = `Select type for ${parsedFileName}`;
     typeAlert.addAction("widget");
     typeAlert.addAction("helper");
     typeAlert.addAction("script");
@@ -160,7 +163,7 @@ for (const fileName of selectedFiles) {
   // Determine version bump
   let currentVersion = existing.version || "0.0.0";
   const bump = new Alert();
-  bump.title = `${fileName} current: v${currentVersion}`;
+  bump.title = `${parsedFileName} current: v${currentVersion}`;
   bump.message = "Select version bump type:";
   bump.addAction("Major");
   bump.addAction("Minor");
@@ -172,7 +175,7 @@ for (const fileName of selectedFiles) {
   const newVersion = bumpVersion(currentVersion, bumpType);
 
   // Update meta info locally
-  localMeta[fileName] = {
+  localMeta[parsedFileName] = {
     version: newVersion,
     type: type,
     lastUpdated: now
@@ -187,24 +190,32 @@ for (const fileName of selectedFiles) {
     const resp = await req.loadJSON();
     sha = resp.sha;
   } catch {
-    console.log(`🆕 Creating new file: ${fileName}`);
+    console.log(`🆕 Creating new file: ${parsedFileName}`);
   }
 
   const upload = new Request(apiUrl);
   upload.method = "PUT";
   upload.headers = githubReqHeader;
   upload.body = JSON.stringify({
-    message: `Update ${fileName} to v${newVersion}`,
+    message: `Update ${parsedFileName} to v${newVersion}`,
     content: Data.fromString(content).toBase64String(),
     sha: sha,
     branch: BRANCH
   });
 
+  // --- Save local meta before upload ---
+  try {
+    fm.writeString(metaFilePath, JSON.stringify(localMeta, null, 2));
+  } catch (e) {
+    errorAlert("❌ Error saving scripts-meta.json after upload", e.toString());
+    return;
+  }
+
   const res = await upload.loadJSON();
   if (upload.response.statusCode >= 200 && upload.response.statusCode < 300) {
-    console.log(`✅ Uploaded ${fileName} v${newVersion}`);
+    console.log(`✅ Uploaded ${parsedFileName} v${newVersion}`);
   } else {
-    console.error(`❌ Failed to upload ${fileName}: ${JSON.stringify(res)}`);
+    console.error(`❌ Failed to upload ${parsedFileName}: ${JSON.stringify(res)}`);
   }
 }
 
@@ -248,7 +259,7 @@ try {
 const doneAlert = new Alert();
 doneAlert.title = "✅ Upload complete";
 doneAlert.message = selectedFiles
-  .map(f => `${f}: v${localMeta[f].version} (${localMeta[f].type})`)
+  .map(f => `${f}: v${localMeta[f]?.version} (${localMeta[f]?.type})`)
   .join("\n");
 doneAlert.addAction("OK");
 await doneAlert.present();
