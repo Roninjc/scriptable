@@ -173,6 +173,7 @@ for (const fileName of selectedFiles) {
 
   // Update meta info locally
   localMeta[parsedFileName] = {
+    ...localMeta[parsedFileName],
     version: newVersion,
     type: type,
     lastUpdated: now
