@@ -1,6 +1,6 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
-// icon-color: pink; icon-glyph: magic;
+// icon-color: deep-blue; icon-glyph: magic;
 
 module.exports.computeHash = (str) => {
   let hash = 0;
