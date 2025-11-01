@@ -33,7 +33,12 @@ module.exports.errorAlert = async (title, message) => {
 
 async function fetchAndDecodeGitHubFile(githubToken, githubRepo, path, BRANCH) {
   if (!githubToken || !githubRepo || !path || !BRANCH) {
-    throw new Error("Missing parameters for fetchAndDecodeGitHubFile");
+    const missing = [];
+    if (!githubToken) missing.push("githubToken");
+    if (!githubRepo) missing.push("githubRepo");
+    if (!path) missing.push("path");
+    if (!BRANCH) missing.push("BRANCH");
+    throw new Error(`Missing parameters for fetchAndDecodeGitHubFile: ${missing.join(", ")}`);
   }
   const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${path}?ref=${BRANCH}`;
   const req = new Request(apiUrl);
