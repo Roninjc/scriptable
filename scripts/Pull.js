@@ -229,7 +229,7 @@ for (const script of selectedScripts) {
   const remotePath = script.type + "s/" + encodeURIComponent(script.name) + ".js";
 
   try {
-    const content = await fetchGitHubFile(githubRepo, githubToken, remotePath, BRANCH);
+    const content = await fetchGitHubFile(githubToken, githubRepo, remotePath, BRANCH);
     const localPath = fm.joinPath(dir, `${script.name}.js`);
     fm.writeString(localPath, content);
     localMeta[script.name] = {
