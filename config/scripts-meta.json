@@ -36,15 +36,15 @@
     "hash": "8512c51"
   },
   "SetWidgetBackground": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "helper",
     "lastUpdated": "2025-11-01T16:38:36.543Z",
-    "hash": "-138842ba"
+    "hash": "-138842bb"
   },
   "Git": {
-    "hash": "-a96c582",
+    "hash": "-a96c583",
     "lastUpdated": "2025-11-01T17:51:18.849Z",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "type": "helper"
   },
   "Shared frame": {
