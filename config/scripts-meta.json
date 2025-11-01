@@ -2,8 +2,8 @@
   "CountryEmojis": {
     "version": "1.0.0",
     "type": "helper",
-    "lastUpdated": "2025-11-01T15:34:03.322Z",
-    "hash": "-71b17688"
+    "lastUpdated": "2025-11-01T16:38:36.543Z",
+    "hash": "-44506a3b"
   },
   "Shopping list": {
     "version": "1.0.0",
@@ -30,15 +30,15 @@
     "hash": "25ab8f47"
   },
   "Push": {
-    "version": "1.1.0",
+    "version": "1.1.1",
     "type": "script",
-    "lastUpdated": "2025-11-01T16:31:49.415Z"
+    "lastUpdated": "2025-11-01T16:38:36.543Z"
   },
   "SetWidgetBackground": {
     "version": "1.0.0",
     "type": "helper",
-    "lastUpdated": "2025-11-01T15:34:03.322Z",
-    "hash": "14cb990f"
+    "lastUpdated": "2025-11-01T16:38:36.543Z",
+    "hash": "-138842ba"
   },
   "Push.js": {
     "version": "1.0.2",
@@ -74,8 +74,8 @@
     "lastUpdated": "2025-11-01T15:34:03.322Z"
   },
   "Git": {
-    "hash": "-1b7badda",
-    "lastUpdated": "2025-11-01T15:34:03.322Z"
+    "hash": "-4106cb31",
+    "lastUpdated": "2025-11-01T16:38:36.543Z"
   },
   "Weather Cal Widget Builder": {
     "hash": "3ffc8e79",
