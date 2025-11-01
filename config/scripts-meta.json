@@ -30,10 +30,10 @@
     "hash": "25ab8f47"
   },
   "Push": {
-    "version": "1.1.4",
+    "version": "1.1.5",
     "type": "script",
-    "lastUpdated": "2025-11-01T16:49:08.460Z",
-    "hash": "8512c51"
+    "lastUpdated": "2025-11-01T17:59:39.350Z",
+    "hash": "3e9eea35"
   },
   "SetWidgetBackground": {
     "version": "1.0.2",
