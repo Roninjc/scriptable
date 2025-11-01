@@ -1,9 +1,9 @@
 {
   "CountryEmojis": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "helper",
-    "lastUpdated": "2025-11-01T16:38:36.543Z",
-    "hash": "-44506a3b"
+    "lastUpdated": "2025-11-01T17:57:49.290Z",
+    "hash": "-71afd4ad"
   },
   "Shopping list": {
     "version": "1.0.0",
