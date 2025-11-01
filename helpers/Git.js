@@ -44,7 +44,7 @@ async function fetchAndDecodeGitHubFile(githubToken, githubRepo, path, BRANCH) {
   const req = new Request(apiUrl);
   req.headers = { Authorization: `token ${githubToken}`, "User-Agent": "ScriptablePull" };
   const res = await req.loadJSON();
-  if (!res.content) throw new Error(`No content found at ${path}`);
+  if (!res.content) throw new Error(`No content found at ${apiUrl}`);
   const base64Content = res.content.replace(/\n/g, '');
   return Data.fromBase64String(base64Content).toRawString();
 }
