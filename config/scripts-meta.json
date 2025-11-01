@@ -24,9 +24,9 @@
     "hash": "-72bcdea"
   },
   "Servers healthz": {
-    "version": "1.1.0",
+    "version": "1.0.1",
     "type": "widget",
-    "lastUpdated": "2025-11-01T16:22:53.847Z"
+    "lastUpdated": "2025-11-01T16:23:19.801Z"
   },
   "Push": {
     "version": "1.0.1",
