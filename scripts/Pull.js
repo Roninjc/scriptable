@@ -1,9 +1,6 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: red; icon-glyph: code-branch;
-// Variables used by Scriptable.
-// These must be at the very top of the file. Do not edit.
-// icon-color: red; icon-glyph: code-branch;
 /**
  * 🧩 pull.js
  * Only to use inside Scriptable app.
