@@ -45,7 +45,8 @@ async function fetchAndDecodeGitHubFile(githubToken, githubRepo, path, BRANCH) {
 }
 
 module.exports.fetchGitHubFile = async (githubToken, githubRepo, path, BRANCH) => {
-  return fetchAndDecodeGitHubFile(githubToken, githubRepo, path, BRANCH);
+  const decoded = await fetchAndDecodeGitHubFile(githubToken, githubRepo, path, BRANCH);
+  return decoded;
 }
 
 module.exports.fetchGitHubJSON = async (githubToken, githubRepo, path, BRANCH) => {
