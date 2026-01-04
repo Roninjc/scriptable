@@ -118,9 +118,10 @@ async function showOnCallNotification() {
   notification.title = "🚨 Turno de On-Call Activo";
   notification.body = "Selecciona el modo de concentración para esta noche";
   notification.sound = "default";
-
-  notification.addAction("💼 Trabajo", "shortcuts://run-shortcut?name=Set%20Focus%20Trabajo", false);
-  notification.addAction("🌙 Descanso", "shortcuts://run-shortcut?name=Set%20Focus%20Descanso", false);
+  
+  // Use Scriptable URL scheme to call this script with parameters
+  notification.addAction("💼 Trabajo", "scriptable:///run/OnCall?mode=work", false);
+  notification.addAction("🌙 Descanso", "scriptable:///run/OnCall?mode=rest", false);
 
   await notification.schedule();
 }
@@ -142,6 +143,37 @@ async function main() {
   console.log("On-Call Management Script");
   console.log(`Date/Time: ${new Date()}`);
   console.log("====================================");
+  
+  // Check if script was called from notification action
+  const urlParams = URLScheme.allParameters();
+  if (urlParams.mode) {
+    console.log(`📱 Called from notification with mode: ${urlParams.mode}`);
+    
+    let selectedMode;
+    if (urlParams.mode === "work") {
+      selectedMode = CONFIG.focusModes.work;
+    } else if (urlParams.mode === "rest") {
+      selectedMode = CONFIG.focusModes.rest;
+    }
+    
+    if (selectedMode) {
+      // Execute the appropriate shortcut
+      try {
+        await Shortcuts.run(`SetFocus${selectedMode}`);
+        
+        // Show confirmation
+        const confirmNotification = new Notification();
+        confirmNotification.title = "✓ Modo Activado";
+        confirmNotification.body = `Modo ${selectedMode} activado correctamente`;
+        await confirmNotification.schedule();
+      } catch (error) {
+        console.error(`Error executing shortcut: ${error}`);
+      }
+    }
+    
+    Script.complete();
+    return;
+  }
   
   const { currentFocusMode } = getShortcutArguments();
   console.log(`Current focus mode: ${currentFocusMode}`);
