@@ -41,7 +41,6 @@ async function checkOnCallStatusComplete() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   
-  // For all-day events comparison, we need date-only (no time)
   const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterdayDateOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
   
@@ -111,26 +110,19 @@ function getShortcutArguments() {
 }
 
 /**
- * Shows interactive notification to choose focus mode
- * Returns the mode selected by the user
+ * Shows persistent notification with actions that trigger shortcuts
+ * This allows the user to interact with it later from the notification center
  */
 async function showOnCallNotification() {
   const notification = new Notification();
   notification.title = "🚨 Turno de On-Call Activo";
   notification.body = "Selecciona el modo de concentración para esta noche";
   notification.sound = "default";
-  
-  notification.addAction("💼 Trabajo", CONFIG.focusModes.work, false);
-  notification.addAction("🌙 Descanso", CONFIG.focusModes.rest, false);
-  notification.addAction("❌ Cancelar", "cancel", true);
-  
-  const action = await notification.schedule();
-  
-  if (action === CONFIG.focusModes.work || action === CONFIG.focusModes.rest) {
-    return action;
-  }
-  
-  return null;
+
+  notification.addAction("💼 Trabajo", "shortcuts://run-shortcut?name=Set%20Focus%20Trabajo", false);
+  notification.addAction("🌙 Descanso", "shortcuts://run-shortcut?name=Set%20Focus%20Descanso", false);
+
+  await notification.schedule();
 }
 
 /**
@@ -166,18 +158,12 @@ async function main() {
     // ===== CASE 1: ON-CALL ACTIVE =====
     console.log("✓ ON-CALL ACTIVE");
     
-    const selectedMode = await showOnCallNotification();
+    await showOnCallNotification();
     
-    if (selectedMode) {
-      result.action = "activate_mode";
-      result.mode = selectedMode;
-      result.message = `On-call active. User selected mode: ${selectedMode}`;
-      console.log(`✓ User selected: ${selectedMode}`);
-    } else {
-      result.action = "no_action";
-      result.message = "On-call active but user cancelled selection";
-      console.log("⚠️ User cancelled selection");
-    }
+    result.action = "show_notification";
+    result.mode = null;
+    result.message = "On-call active. Persistent notification shown with focus mode options.";
+    console.log("✓ Notification sent to notification center");
     
   } else {
     // ===== CASE 2: NO ON-CALL =====
