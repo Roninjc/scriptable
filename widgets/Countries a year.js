@@ -51,7 +51,7 @@ async function createWidget() {
       date
     }
   } catch (error) {
-    console.warn(`Error trying to get location : ${error}`)
+    console.warn(`Error trying to get location: ${error}`)
   }
   
   if (!ifm.fileExists(pathLoc)) {
@@ -65,7 +65,7 @@ async function createWidget() {
     }
     storedLocs = JSON.parse(ifm.readString(pathLoc)) || []
   }
-  if (Object.keys(currentLoc)?.length > 0 && !storedLocs?.some(loc => loc.country === currentLoc.country && (new Date(loc.date)).toDateString() === (new Date(currentLoc.date)).toDateString())) {
+  if (Object.keys(currentLoc)?.length > 0 && currentLoc.country && currentLoc.isoCountryCode && !storedLocs?.some(loc => loc.country === currentLoc.country && (new Date(loc.date)).toDateString() === (new Date(currentLoc.date)).toDateString())) {
     const locsToStore = [
       ...storedLocs,
       currentLoc
@@ -122,7 +122,7 @@ async function createWidget() {
     }
 
     const days = locsByCountry[loc].length
-    const text = countryStack.addText(`${flag.emojiCode} ${loc} ${days}`)
+    const text = countryStack.addText(`${flag?.emojiCode} ${loc} ${days}`)
     text.font = Font.semiboldSystemFont(15)
     text.leftAlignText()
   }
