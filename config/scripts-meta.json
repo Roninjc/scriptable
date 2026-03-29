@@ -8,8 +8,8 @@
   "Shopping list": {
     "version": "1.0.1",
     "type": "widget",
-    "lastUpdated": "2025-11-01T18:00:06.877Z",
-    "hash": "51dbd10b"
+    "lastUpdated": "2026-03-29T18:29:27.513Z",
+    "hash": "552c67a6"
   },
   "Pull": {
     "version": "1.1.2",
@@ -18,10 +18,10 @@
     "hash": "2936997d"
   },
   "Countries a year": {
-    "version": "1.0.3",
+    "version": "1.1.0",
     "type": "widget",
-    "lastUpdated": "2025-11-01T17:10:11.860Z",
-    "hash": "-72bcdea"
+    "lastUpdated": "2026-03-29T18:29:27.513Z",
+    "hash": "-5651acff"
   },
   "Servers healthz": {
     "version": "1.1.0",
@@ -38,20 +38,14 @@
   "SetWidgetBackground": {
     "version": "1.0.2",
     "type": "helper",
-    "lastUpdated": "2025-11-01T17:56:53.043Z",
-    "hash": "-581da396"
+    "lastUpdated": "2026-03-29T18:29:27.513Z",
+    "hash": "-bdd45d6"
   },
   "Git": {
     "hash": "-a96c582",
     "lastUpdated": "2025-11-01T17:51:18.849Z",
     "version": "0.2.2",
     "type": "helper"
-  },
-  "OnCall": {
-    "version": "1.2.0",
-    "type": "script",
-    "lastUpdated": "2026-01-04T12:00:00.000Z",
-    "hash": "-191bce30"
   },
   "Shared frame": {
     "hash": "-3eef1ed2",
@@ -70,7 +64,21 @@
     "lastUpdated": "2025-11-01T17:10:11.860Z"
   },
   "Transparent & Blurred Widgets": {
-    "hash": "-2e597ba3",
-    "lastUpdated": "2025-11-01T17:10:11.860Z"
+    "hash": "-74c0bf45",
+    "lastUpdated": "2026-03-29T18:29:27.513Z"
+  },
+  "OnCall": {
+    "version": "1.0.0",
+    "type": "script",
+    "lastUpdated": "2026-03-29T18:29:27.513Z",
+    "hash": "1803d3df"
+  },
+  "ServersList": {
+    "hash": "-702b0b45",
+    "lastUpdated": "2026-03-29T18:29:27.513Z"
+  },
+  "Untitled Script": {
+    "hash": "2ff21e05",
+    "lastUpdated": "2026-03-29T18:29:27.513Z"
   }
 }
