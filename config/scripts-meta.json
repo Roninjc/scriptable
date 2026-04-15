@@ -73,6 +73,12 @@
     "lastUpdated": "2026-03-29T18:29:27.513Z",
     "hash": "1803d3df"
   },
+  "McParking": {
+    "version": "1.0.0",
+    "type": "script",
+    "lastUpdated": "2026-04-15T00:00:00.000Z",
+    "hash": ""
+  },
   "ServersList": {
     "hash": "-702b0b45",
     "lastUpdated": "2026-03-29T18:29:27.513Z"
