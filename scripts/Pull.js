@@ -97,6 +97,8 @@ const updates = [];
 const newScripts = [];
 const conflicts = [];
 const skipped = [];
+const reconciled = [];
+let metaDirty = false;
 
 for (const [name, remoteData] of Object.entries(remoteMeta)) {
   const localData = localMeta[name] || {};
@@ -116,6 +118,21 @@ for (const [name, remoteData] of Object.entries(remoteMeta)) {
     newScripts.push({ name, ...remoteData, reason: "missing locally" });
   }
   else if (localGeneratedHash === remoteHash) {
+    // Content already matches remote. If the local meta drifted (e.g. the file
+    // was copied manually, or was pushed to GitHub outside of Push.js), reconcile
+    // it here without re-downloading — otherwise the saved hash/version stay stale
+    // and future pulls report false conflicts ("local edits").
+    if (localSavedHash !== remoteHash || vLocal !== vRemote) {
+      localMeta[name] = {
+        ...localData,
+        version: vRemote,
+        type: remoteData.type || localData.type,
+        hash: remoteHash,
+        lastUpdated: new Date().toISOString(),
+      };
+      metaDirty = true;
+      reconciled.push(name);
+    }
     skipped.push({ name, reason: "identical content" });
   }
   else if (cmp > 0) {
@@ -144,6 +161,13 @@ for (const [name, remoteData] of Object.entries(remoteMeta)) {
 console.log(`🆕 New: ${newScripts.length}, ⬆️ Updates: ${updates.length}, ⚠️ Conflicts: ${conflicts.length}, ⏭️ Skipped: ${skipped.length}`);
 console.log(`conflicts: ${JSON.stringify(conflicts)}`)
 
+// Persist reconciled metadata for identical-content scripts even if there is
+// nothing to download (the menu's "OK" path returns before the save below).
+if (metaDirty) {
+  fm.writeString(metaFilePath, JSON.stringify(localMeta, null, 2));
+  console.log("🔧 Reconciled local scripts-meta.json with remote metadata.");
+}
+
 // --- Main menu ---
 const menu = new Alert();
 menu.title = "📦 Script Updates";
@@ -152,6 +176,7 @@ let message = "";
 if (newScripts.length) message += `🆕 New: ${newScripts.map(s => s.name).join(", ")}\n`;
 if (updates.length) message += `⬆️ Updates: ${updates.map(s => s.name).join(", ")}\n`;
 if (conflicts.length) message += `⚠️ Conflicts: ${conflicts.map(s => s.name).join(", ")}\n`;
+if (reconciled.length) message += `🔧 Metadata synced: ${reconciled.join(", ")}\n`;
 if (!(newScripts.length + updates.length > 0)) message += "No possible updates.";
 if (!message) message = "✅ All scripts up to date!";
 
