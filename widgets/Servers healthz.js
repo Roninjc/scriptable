@@ -82,16 +82,17 @@ async function createWidget() {
   serversStack.layoutVertically()
   const { servers } = serversData
 
-  for (const server of servers) {
+  await Promise.all(servers.map(async (server) => {
     try {
       const req = new Request(server.url)
+      req.timeoutInterval = 5
       await req.load()
       const { statusCode } = req.response
       server.status = statusCode
     } catch (e) {
       console.log(`Error fetching ${server.title}: ${e}`)
     }
-  }
+  }))
   
   for (const server of servers) {
     const { status } = server
