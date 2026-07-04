@@ -24,7 +24,7 @@
     "hash": "-5651acff"
   },
   "Servers healthz": {
-    "version": "1.1.1",
+    "version": "1.1.0",
     "type": "widget",
     "lastUpdated": "2025-11-01T16:31:49.415Z",
     "hash": "25ab8f47"
@@ -36,10 +36,10 @@
     "hash": "3e9eea35"
   },
   "SetWidgetBackground": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "helper",
-    "lastUpdated": "2026-03-29T18:29:27.513Z",
-    "hash": "-bdd45d6"
+    "lastUpdated": "2026-07-04T10:48:39.138Z",
+    "hash": "-556324f9"
   },
   "Git": {
     "hash": "-a96c582",
@@ -73,18 +73,18 @@
     "lastUpdated": "2026-03-29T18:29:27.513Z",
     "hash": "1803d3df"
   },
-  "McParking": {
-    "version": "1.0.0",
-    "type": "script",
-    "lastUpdated": "2026-04-15T00:00:00.000Z",
-    "hash": ""
-  },
   "ServersList": {
-    "hash": "-702b0b45",
-    "lastUpdated": "2026-03-29T18:29:27.513Z"
+    "hash": "635e4cb",
+    "lastUpdated": "2026-07-04T10:48:39.138Z"
   },
   "Untitled Script": {
     "hash": "2ff21e05",
     "lastUpdated": "2026-03-29T18:29:27.513Z"
+  },
+  "McParking": {
+    "version": "1.0.1",
+    "type": "script",
+    "lastUpdated": "2026-07-04T10:48:39.138Z",
+    "hash": "1cd79633"
   }
 }
