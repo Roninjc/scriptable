@@ -16,18 +16,30 @@ module.exports.setWidgetBackground = async (widget) => {
     console.warn('No widget received')
     return
   }
-
-  /* Get widget args */
+  
+    /* Set vars */
   const fm = FileManager.iCloud();
-  const widgetInputRAW = args.widgetParameter;
-  const widgetSize = config.widgetFamily
-  
-  /* Widget default variables */
-  const defaultImgName = "bo"; // Adapt this to your background image name or name your background image like this
-  const themeBackgroundColor = Color.dynamic(Color.white(), Color.darkGray())
+  const scriptablePath = '/var/mobile/Library/Mobile Documents/iCloud~dk~simonbs~Scriptable/Documents/';
+  const defbgImgFile = `${scriptablePath}defbg.txt`;
+  const bgPath = `${scriptablePath}Backgrounds/`
+  const themeBackgroundColor = Color.dynamic(Color.white(), Color.darkGray());
 
+  let defaultImgName = '';
   let widgetInput = null;
+
+    /* Get widget args */
+  const widgetInputRAW = args.widgetParameter;
+  const widgetSize = config.widgetFamily;
   
+    /* Get bg image name from file */
+  try {
+    await fm.downloadFileFromiCloud(defbgImgFile);
+    defaultImgName = fm.readString(defbgImgFile);
+  } catch(e) {
+    console.warn(`[WIDGETBACKGROUND] Error downloading file from iCloud: ${e}`)
+  }
+console.log(`----- ${defaultImgName}, ${defbgImgFile}`)
+    /* Validate widget input */
   try {
     if (!widgetInputRAW) {
       throw new Error('Nothing set as widget parameter.')
@@ -41,16 +53,15 @@ module.exports.setWidgetBackground = async (widget) => {
   }
 
     /* Build background image path */
-  const imgName = Device.isUsingDarkAppearance() ? defaultImgName + "-just-blur.jpg" : defaultImgName + "-light-blur.jpg"
-  const scriptablePath = '/var/mobile/Library/Mobile Documents/iCloud~dk~simonbs~Scriptable/Documents/Backgrounds/';  
-  const bgImgPath = `${scriptablePath}${widgetSize}/${widgetInput}/${imgName}`
+  const imgName = Device.isUsingDarkAppearance() ? defaultImgName + "-dark.jpg" : defaultImgName + "-light.jpg"
+  const bgImgPath = `${bgPath}${widgetSize}/${widgetInput}/${imgName}`
   let imgFromFile = null
 
   try {
     await fm.downloadFileFromiCloud(bgImgPath)
     imgFromFile = fm.readImage(bgImgPath);
   } catch(e) {
-    console.warn(`[WIDGETBACKGROUND] Error downloading file from iCloud: ${e}`)
+    console.warn(`[WIDGETBACKGROUND] Error downloading image from iCloud: ${e}`)
   }
 
   if (imgFromFile) {
