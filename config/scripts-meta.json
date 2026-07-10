@@ -18,10 +18,10 @@
     "hash": "7b2e7a61"
   },
   "Countries a year": {
-    "version": "1.1.0",
+    "version": "1.1.1",
     "type": "widget",
-    "lastUpdated": "2026-03-29T18:29:27.513Z",
-    "hash": "-5651acff"
+    "lastUpdated": "2026-07-10T13:03:18.588Z",
+    "hash": "34a99480"
   },
   "Servers healthz": {
     "version": "1.1.2",
@@ -86,5 +86,29 @@
     "type": "script",
     "lastUpdated": "2026-07-04T10:48:39.138Z",
     "hash": "1cd79633"
+  },
+  "CountriesAYearSync": {
+    "version": "1.0.0",
+    "type": "helper",
+    "hash": "3817cad8",
+    "lastUpdated": "2026-07-10T13:03:18.588Z"
+  },
+  "nacl": {
+    "version": "1.0.0",
+    "type": "helper",
+    "hash": "-3233eae5",
+    "lastUpdated": "2026-07-10T13:03:18.588Z"
+  },
+  "scrypt": {
+    "version": "1.0.0",
+    "type": "helper",
+    "hash": "-4c8aea96",
+    "lastUpdated": "2026-07-10T13:03:18.588Z"
+  },
+  "Setup Worldwide Sync": {
+    "version": "1.0.0",
+    "type": "script",
+    "hash": "215eb63d",
+    "lastUpdated": "2026-07-10T13:03:18.588Z"
   }
 }
