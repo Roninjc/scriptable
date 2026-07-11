@@ -76,13 +76,15 @@ async function createWidget() {
       ifm.writeString(pathLoc, JSON.stringify(locsToStore))
       storedLocs = [ ...locsToStore ]
 
-      // A new day was recorded → publish the encrypted dataset to the relay.
-      // No-op unless sync was enabled from the Worldwide app (keys in Keychain).
+      // A new day was recorded → merge any pending gap repairs from the app,
+      // then publish the encrypted dataset to the relay. Both are no-ops unless
+      // sync was enabled from the Worldwide app (keys in Keychain).
       try {
         const sync = importModule('CountriesAYearSync')
+        await sync.applyPatches()
         await sync.pushToRelay()
       } catch (e) {
-        console.warn(`Relay push failed: ${e}`)
+        console.warn(`Relay sync failed: ${e}`)
       }
     } catch (e) {
       msg = `- ${e} | ${pathLoc}`

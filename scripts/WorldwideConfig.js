@@ -39,18 +39,40 @@ if (action === "ping") {
     Keychain.set("ww_relay_id", id);
     Keychain.set("ww_relay_pass", pass);
 
-    // Push right away so the app has data immediately (best effort).
+    // Merge any pending repairs, then push the snapshot (best effort).
     let extra = "";
     try {
       const sync = importModule("CountriesAYearSync");
+      const ap = await sync.applyPatches();
       const res = await sync.pushToRelay();
+      const merged = ap && ap.applied ? ` ${ap.applied} repair(s) merged.` : "";
       extra = res.ok
-        ? `\n\nUploaded ${res.count} entries to the relay.`
+        ? `\n\nUploaded ${res.count} entries.` + merged
         : `\n\nConfig saved, but the first upload returned ${res.status ?? res.reason}.`;
     } catch (e) {
       extra = `\n\nConfig saved. First upload skipped (${e}).`;
     }
     await note("Worldwide sync enabled", "This device will now publish to the relay." + extra);
+  }
+} else if (action === "apply") {
+  try {
+    const sync = importModule("CountriesAYearSync");
+    const res = await sync.applyPatches();
+    if (!res.ok) {
+      await note("Worldwide", "Couldn't apply repairs: " + (res.reason || "unknown") + ".");
+    } else if (res.applied > 0) {
+      // Repairs are now in the JSON; publish the updated snapshot.
+      let up = "";
+      try {
+        const r = await sync.pushToRelay();
+        up = r.ok ? ` Uploaded ${r.count}.` : "";
+      } catch (e) {}
+      await note("Repairs applied", `Merged ${res.applied} repair(s) into your JSON files.` + up);
+    } else {
+      await note("Worldwide", res.empty ? "No repairs waiting." : "Nothing new to apply.");
+    }
+  } catch (e) {
+    await note("Worldwide", "Apply failed: " + e);
   }
 } else if (action === "clear") {
   for (const k of RELAY_KEYS) {

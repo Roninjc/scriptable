@@ -64,6 +64,35 @@ function b64Encode(bytes) {
   return out;
 }
 
+// Inverse of b64Encode: standard base64 (padding tolerant) → Uint8Array.
+function b64Decode(str) {
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const lookup = new Int16Array(256).fill(-1);
+  for (let i = 0; i < A.length; i++) lookup[A.charCodeAt(i)] = i;
+  const clean = str.trim().replace(/=+$/, "");
+  const outLen = Math.floor((clean.length * 6) / 8);
+  const out = new Uint8Array(outLen);
+  let bits = 0, acc = 0, p = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const v = lookup[clean.charCodeAt(i)];
+    if (v < 0) continue;
+    acc = (acc << 6) | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[p++] = (acc >>> bits) & 0xff;
+    }
+  }
+  return out;
+}
+
+// Inverse of utf8Encode (matches tweetnacl-util.encodeUTF8): UTF-8 bytes → string.
+function utf8Decode(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return decodeURIComponent(escape(bin));
+}
+
 // Scriptable has no CSPRNG global; UUID v4 is a good entropy source for a
 // per-upload salt/nonce (they only need to be unique + unpredictable).
 function randomBytes(n) {
@@ -103,6 +132,19 @@ function encryptEntries(entries, passphrase, saltIn, nonceIn) {
   return b64Encode(packed);
 }
 
+// Inverse of encryptEntries. Throws if the passphrase is wrong or data corrupt.
+function decryptEntries(blobB64, passphrase) {
+  const packed = b64Decode(String(blobB64).trim());
+  if (packed.length <= SALT_LEN + NONCE_LEN) throw new Error("blob-too-short");
+  const salt = packed.slice(0, SALT_LEN);
+  const nonce = packed.slice(SALT_LEN, SALT_LEN + NONCE_LEN);
+  const box = packed.slice(SALT_LEN + NONCE_LEN);
+  const key = deriveKey(passphrase, salt);
+  const msg = nacl.secretbox.open(box, nonce, key);
+  if (!msg) throw new Error("decrypt-failed");
+  return JSON.parse(utf8Decode(msg));
+}
+
 // --- Scriptable-only I/O ---
 
 function readAllEntries() {
@@ -131,6 +173,92 @@ function kc(key) {
   return Keychain.contains(key) ? Keychain.get(key) : null;
 }
 
+// Find the existing yearly file for `year`, tolerating the widget's naming
+// ("locationsStore 2025.json") and a space-less variant. Falls back to the
+// widget's own convention when none exists yet.
+function yearFileName(ifm, dir, year) {
+  const re = new RegExp("^locationsStore\\D*" + year + "\\.json$", "i");
+  for (const name of ifm.listContents(dir)) {
+    if (re.test(name)) return name;
+  }
+  return `locationsStore ${year}.json`;
+}
+
+// Fetch the PWA's gap repairs from the relay and merge them into the yearly
+// JSON files. Idempotent: dedups by country + calendar day (like the widget),
+// and short-circuits when the patches blob hasn't changed since last time.
+async function applyPatches() {
+  const url = kc("ww_relay_url");
+  const id = kc("ww_relay_id");
+  const pass = kc("ww_relay_pass");
+  if (!url || !id || !pass) return { ok: false, reason: "not-configured" };
+
+  const req = new Request(`${url.replace(/\/+$/, "")}/${id}_patches`);
+  req.method = "GET";
+  let blob;
+  try {
+    blob = await req.loadString();
+  } catch (e) {
+    return { ok: false, reason: "network" };
+  }
+  const status = req.response ? req.response.statusCode : 0;
+  if (status === 404) return { ok: true, applied: 0, empty: true };
+  if (status !== 200) return { ok: false, reason: "network", status };
+
+  blob = (blob || "").trim();
+  if (!blob) return { ok: true, applied: 0, empty: true };
+  if (kc("ww_patches_seen") === blob) return { ok: true, applied: 0, skipped: true };
+
+  let patches;
+  try {
+    patches = decryptEntries(blob, pass);
+  } catch (e) {
+    return { ok: false, reason: "decrypt" };
+  }
+  if (!Array.isArray(patches)) return { ok: false, reason: "decrypt" };
+
+  const ifm = FileManager.iCloud();
+  const dir = ifm.documentsDirectory();
+
+  // Group by year so each repair lands in its own annual file.
+  const byYear = {};
+  for (const p of patches) {
+    if (!p || !p.country || !p.isoCountryCode || !p.date) continue;
+    const y = new Date(p.date).getFullYear();
+    (byYear[y] = byYear[y] || []).push(p);
+  }
+
+  let applied = 0;
+  for (const year of Object.keys(byYear)) {
+    const name = yearFileName(ifm, dir, year);
+    const path = ifm.joinPath(dir, name);
+    let list = [];
+    if (ifm.fileExists(path)) {
+      try { ifm.downloadFileFromiCloud(path); } catch (e) {}
+      try { list = JSON.parse(ifm.readString(path)) || []; } catch (e) { list = []; }
+    }
+    let changed = false;
+    for (const p of byYear[year]) {
+      const dayKey = new Date(p.date).toDateString();
+      const exists = list.some(
+        (l) => l.country === p.country && new Date(l.date).toDateString() === dayKey
+      );
+      if (!exists) {
+        list.push({ country: p.country, isoCountryCode: p.isoCountryCode, date: p.date, filled: true });
+        applied++;
+        changed = true;
+      }
+    }
+    if (changed) {
+      list.sort((a, b) => a.date - b.date);
+      ifm.writeString(path, JSON.stringify(list));
+    }
+  }
+
+  Keychain.set("ww_patches_seen", blob);
+  return { ok: true, applied };
+}
+
 // Encrypt every stored entry and PUT it to the relay. Returns a small status.
 async function pushToRelay() {
   const url = kc("ww_relay_url");
@@ -150,4 +278,4 @@ async function pushToRelay() {
   return { ok: status === 200, status, count: entries.length };
 }
 
-module.exports = { pushToRelay, encryptEntries, readAllEntries };
+module.exports = { pushToRelay, applyPatches, encryptEntries, decryptEntries, readAllEntries };
