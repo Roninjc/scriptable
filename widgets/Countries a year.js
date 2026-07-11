@@ -77,7 +77,7 @@ async function createWidget() {
       storedLocs = [ ...locsToStore ]
 
       // A new day was recorded → publish the encrypted dataset to the relay.
-      // No-op unless the user configured sync via "Setup Worldwide Sync".
+      // No-op unless sync was enabled from the Worldwide app (keys in Keychain).
       try {
         const sync = importModule('CountriesAYearSync')
         await sync.pushToRelay()

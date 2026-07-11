@@ -18,10 +18,10 @@
     "hash": "7b2e7a61"
   },
   "Countries a year": {
-    "version": "1.1.1",
+    "version": "1.1.2",
     "type": "widget",
-    "lastUpdated": "2026-07-10T13:03:18.588Z",
-    "hash": "34a99480"
+    "lastUpdated": "2026-07-11T14:54:16.638Z",
+    "hash": "69699198"
   },
   "Servers healthz": {
     "version": "1.1.2",
@@ -103,12 +103,6 @@
     "version": "1.0.0",
     "type": "helper",
     "hash": "-4c8aea96",
-    "lastUpdated": "2026-07-10T13:03:18.588Z"
-  },
-  "Setup Worldwide Sync": {
-    "version": "1.0.0",
-    "type": "script",
-    "hash": "215eb63d",
     "lastUpdated": "2026-07-10T13:03:18.588Z"
   },
   "WorldwideConfig": {
