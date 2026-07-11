@@ -184,9 +184,35 @@ function yearFileName(ifm, dir, year) {
   return `locationsStore ${year}.json`;
 }
 
-// Fetch the PWA's gap repairs from the relay and merge them into the yearly
-// JSON files. Idempotent: dedups by country + calendar day (like the widget),
-// and short-circuits when the patches blob hasn't changed since last time.
+const dayKey = (ms) => new Date(ms).toDateString();
+
+// Reconcile one year's list against the authoritative desired filled set:
+// remove `filled` entries no longer desired (undo/edit), add missing ones,
+// and never touch real entries. Returns the new list + counts.
+function reconcileYear(list, patchesForYear, desired) {
+  const kept = list.filter((l) => {
+    if (!l || l.filled !== true) return true; // real entries are untouchable
+    return desired.has(l.isoCountryCode + "|" + dayKey(l.date));
+  });
+  const removed = list.length - kept.length;
+  let added = 0;
+  for (const p of patchesForYear) {
+    const dk = dayKey(p.date);
+    const exists = kept.some((l) => l.country === p.country && dayKey(l.date) === dk);
+    if (!exists) {
+      kept.push({ country: p.country, isoCountryCode: p.isoCountryCode, date: p.date, filled: true });
+      added++;
+    }
+  }
+  kept.sort((a, b) => a.date - b.date);
+  return { list: kept, added, removed };
+}
+
+// Fetch the PWA's gap repairs from the relay and reconcile them into the yearly
+// JSON files. The patches blob is the authoritative set of manual fills, so
+// this both ADDS new fills and REMOVES ones the user has undone or edited
+// (matched by the `filled` flag; real entries are never removed). Idempotent,
+// and short-circuits when the blob hasn't changed since last time.
 async function applyPatches() {
   const url = kc("ww_relay_url");
   const id = kc("ww_relay_id");
@@ -202,61 +228,75 @@ async function applyPatches() {
     return { ok: false, reason: "network" };
   }
   const status = req.response ? req.response.statusCode : 0;
-  if (status === 404) return { ok: true, applied: 0, empty: true };
-  if (status !== 200) return { ok: false, reason: "network", status };
 
-  blob = (blob || "").trim();
-  if (!blob) return { ok: true, applied: 0, empty: true };
-  if (kc("ww_patches_seen") === blob) return { ok: true, applied: 0, skipped: true };
-
-  let patches;
-  try {
-    patches = decryptEntries(blob, pass);
-  } catch (e) {
-    return { ok: false, reason: "decrypt" };
+  // 200 → decrypt the set. 404 → no mailbox; treat as an empty set so we can
+  // still remove fills the user undid. Anything else is a real error.
+  let patches = [];
+  if (status === 200) {
+    blob = (blob || "").trim();
+    if (blob && kc("ww_patches_seen") === blob) {
+      return { ok: true, applied: 0, removed: 0, skipped: true };
+    }
+    if (blob) {
+      try {
+        patches = decryptEntries(blob, pass);
+      } catch (e) {
+        return { ok: false, reason: "decrypt" };
+      }
+      if (!Array.isArray(patches)) return { ok: false, reason: "decrypt" };
+    }
+  } else if (status === 404) {
+    blob = "";
+  } else {
+    return { ok: false, reason: "network", status };
   }
-  if (!Array.isArray(patches)) return { ok: false, reason: "decrypt" };
 
   const ifm = FileManager.iCloud();
   const dir = ifm.documentsDirectory();
 
-  // Group by year so each repair lands in its own annual file.
+  // Authoritative desired set + per-year grouping.
+  const desired = new Set();
   const byYear = {};
   for (const p of patches) {
     if (!p || !p.country || !p.isoCountryCode || !p.date) continue;
-    const y = new Date(p.date).getFullYear();
+    desired.add(p.isoCountryCode + "|" + dayKey(p.date));
+    const y = String(new Date(p.date).getFullYear());
     (byYear[y] = byYear[y] || []).push(p);
   }
 
+  // Reconcile every year that has patches OR an existing yearly file (so undone
+  // fills are removed even from years no longer present in the set).
+  const years = new Set(Object.keys(byYear));
+  for (const name of ifm.listContents(dir)) {
+    const mth = name.match(/^locationsStore\D*(\d{4})\.json$/i);
+    if (mth) years.add(mth[1]);
+  }
+
   let applied = 0;
-  for (const year of Object.keys(byYear)) {
+  let removed = 0;
+  for (const year of years) {
     const name = yearFileName(ifm, dir, year);
     const path = ifm.joinPath(dir, name);
+    const exists = ifm.fileExists(path);
+    if (!exists && !byYear[year]) continue; // nothing to add and no file to clean
+
     let list = [];
-    if (ifm.fileExists(path)) {
+    if (exists) {
       try { ifm.downloadFileFromiCloud(path); } catch (e) {}
       try { list = JSON.parse(ifm.readString(path)) || []; } catch (e) { list = []; }
     }
-    let changed = false;
-    for (const p of byYear[year]) {
-      const dayKey = new Date(p.date).toDateString();
-      const exists = list.some(
-        (l) => l.country === p.country && new Date(l.date).toDateString() === dayKey
-      );
-      if (!exists) {
-        list.push({ country: p.country, isoCountryCode: p.isoCountryCode, date: p.date, filled: true });
-        applied++;
-        changed = true;
-      }
-    }
-    if (changed) {
-      list.sort((a, b) => a.date - b.date);
-      ifm.writeString(path, JSON.stringify(list));
+
+    const r = reconcileYear(list, byYear[year] || [], desired);
+    if (r.added > 0 || r.removed > 0) {
+      ifm.writeString(path, JSON.stringify(r.list));
+      applied += r.added;
+      removed += r.removed;
     }
   }
 
-  Keychain.set("ww_patches_seen", blob);
-  return { ok: true, applied };
+  if (blob) Keychain.set("ww_patches_seen", blob);
+  else if (Keychain.contains("ww_patches_seen")) Keychain.remove("ww_patches_seen");
+  return { ok: true, applied, removed };
 }
 
 // Encrypt every stored entry and PUT it to the relay. Returns a small status.

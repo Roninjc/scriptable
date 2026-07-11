@@ -45,7 +45,9 @@ if (action === "ping") {
       const sync = importModule("CountriesAYearSync");
       const ap = await sync.applyPatches();
       const res = await sync.pushToRelay();
-      const merged = ap && ap.applied ? ` ${ap.applied} repair(s) merged.` : "";
+      const merged =
+        (ap && ap.applied ? ` ${ap.applied} repair(s) added.` : "") +
+        (ap && ap.removed ? ` ${ap.removed} removed.` : "");
       extra = res.ok
         ? `\n\nUploaded ${res.count} entries.` + merged
         : `\n\nConfig saved, but the first upload returned ${res.status ?? res.reason}.`;
@@ -60,16 +62,19 @@ if (action === "ping") {
     const res = await sync.applyPatches();
     if (!res.ok) {
       await note("Worldwide", "Couldn't apply repairs: " + (res.reason || "unknown") + ".");
-    } else if (res.applied > 0) {
-      // Repairs are now in the JSON; publish the updated snapshot.
+    } else if ((res.applied || 0) + (res.removed || 0) > 0) {
+      // The JSON changed; publish the updated snapshot.
       let up = "";
       try {
         const r = await sync.pushToRelay();
         up = r.ok ? ` Uploaded ${r.count}.` : "";
       } catch (e) {}
-      await note("Repairs applied", `Merged ${res.applied} repair(s) into your JSON files.` + up);
+      const parts = [];
+      if (res.applied) parts.push(`added ${res.applied}`);
+      if (res.removed) parts.push(`removed ${res.removed}`);
+      await note("Repairs synced", `Updated your JSON (${parts.join(", ")}).` + up);
     } else {
-      await note("Worldwide", res.empty ? "No repairs waiting." : "Nothing new to apply.");
+      await note("Worldwide", res.empty ? "No repairs waiting." : "Nothing to change.");
     }
   } catch (e) {
     await note("Worldwide", "Apply failed: " + e);
