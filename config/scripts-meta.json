@@ -110,5 +110,11 @@
     "type": "script",
     "hash": "215eb63d",
     "lastUpdated": "2026-07-10T13:03:18.588Z"
+  },
+  "WorldwideConfig": {
+    "version": "1.0.0",
+    "type": "script",
+    "hash": "-1940c161",
+    "lastUpdated": "2026-07-11T14:02:21.770Z"
   }
 }
