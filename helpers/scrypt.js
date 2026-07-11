@@ -12,6 +12,14 @@
 // Harmless under Node (where `exports` already exists).
 if (typeof exports === "undefined") { var exports = {}; }
 
+// Scriptable also lacks the global `setTimeout` this library references. It is
+// only *used* in async mode, but the reference is evaluated unconditionally
+// (even by syncScrypt), so a bare undefined `setTimeout` throws. Map it to
+// Scriptable's Timer. Harmless under Node, where setTimeout already exists.
+if (typeof setTimeout === "undefined") {
+	var setTimeout = function (fn, ms) { return Timer.schedule(ms || 0, false, fn); };
+}
+
 (function(root) {
     const MAX_VALUE = 0x7fffffff;
 

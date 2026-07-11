@@ -100,10 +100,10 @@
     "lastUpdated": "2026-07-10T13:03:18.588Z"
   },
   "scrypt": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "helper",
-    "hash": "-4c8aea96",
-    "lastUpdated": "2026-07-10T13:03:18.588Z"
+    "hash": "6c9c69f2",
+    "lastUpdated": "2026-07-11T15:29:34.748Z"
   },
   "WorldwideConfig": {
     "version": "1.0.0",
