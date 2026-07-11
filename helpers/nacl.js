@@ -2165,7 +2165,13 @@ function checkBoxLengths(pk, sk) {
 
 function checkArrayTypes() {
   for (var i = 0; i < arguments.length; i++) {
-    if (!(arguments[i] instanceof Uint8Array))
+    var a = arguments[i];
+    // Cross-realm tolerant (Scriptable): each imported module runs in its own
+    // JSContext, so a Uint8Array created in another module is NOT `instanceof`
+    // this module's Uint8Array even though it behaves identically. Fall back to
+    // duck-typing on the single-byte typed-array shape.
+    if (!(a instanceof Uint8Array) &&
+        !(a && a.BYTES_PER_ELEMENT === 1 && typeof a.length === 'number' && typeof a.subarray === 'function'))
       throw new TypeError('unexpected type, use Uint8Array');
   }
 }
