@@ -1,20 +1,22 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-blue; icon-glyph: magic;
-//
-// WorldwideSync — end-to-end encrypted publish to the Worldwide relay.
-//
-// Called from the "Countries a year" widget whenever a NEW location record is
-// written. Reads every locationsStore*.json from iCloud, encrypts the merged
-// list with a passphrase (kept in the Keychain, never uploaded), and PUTs the
-// ciphertext to the relay. The relay only ever stores unreadable bytes.
-//
-// The crypto format is byte-compatible with the PWA's src/lib/crypto.ts:
-//   base64( salt[16] ‖ nonce[24] ‖ nacl.secretbox )
-//   key = scrypt(utf8(passphrase.NFKC), salt, N=32768, r=8, p=1, dkLen=32)
-//
-// This module is also require()-able under Node so the format can be tested
-// against the PWA's decryptEntries without a device.
+
+/**
+ * CountriesAYearSync — Worldwide sync helper (end-to-end encrypted).
+ *
+ * Used by the "Countries a year" widget and by WorldwideConfig:
+ *   - pushToRelay():   encrypt every locationsStore*.json and PUT it to the relay.
+ *   - applyPatches():  pull the PWA's gap repairs from the relay and reconcile
+ *                      them into the yearly JSON files.
+ *   - applyPatchSet(): same reconcile, from inline data (QR / no server).
+ *
+ * Crypto format (byte-compatible with the PWA's src/lib/crypto.ts):
+ *   base64( salt[16] ‖ nonce[24] ‖ nacl.secretbox )
+ *   key = scrypt(utf8(passphrase.NFKC), salt, N=32768, r=8, p=1, dkLen=32)
+ *
+ * Also require()-able under Node to test the format against the PWA.
+ */
 
 // --- dependency loading (Scriptable importModule vs Node require) ---
 function loadDep(name) {

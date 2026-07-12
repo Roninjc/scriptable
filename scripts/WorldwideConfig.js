@@ -1,15 +1,19 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: blue; icon-glyph: satellite-dish;
-//
-// WorldwideConfig — enables/disables the encrypted relay from a deep link.
-// The Worldwide PWA drives everything; there is no manual entry here.
-//
-//   scriptable:///run/WorldwideConfig?action=ping&hello=world     → spike test, no side effects
-//   scriptable:///run/WorldwideConfig?action=set&url=…&id=…&pass=… → store relay keys + first push
-//   scriptable:///run/WorldwideConfig?action=clear                → remove relay keys (stop publishing)
-//
-// Keys live in this device's Keychain: ww_relay_url / ww_relay_id / ww_relay_pass.
+
+/**
+ * WorldwideConfig — enable / disable / apply Worldwide sync from a deep link.
+ *
+ * The Worldwide PWA drives everything; there is no manual entry here.
+ *
+ *   ?action=set&url=…&id=…&pass=…  → store relay keys + first push
+ *   ?action=clear                  → remove relay keys (stop publishing)
+ *   ?action=apply                  → pull + reconcile the relay patches
+ *   ?action=patch&data=…           → apply inline patches (QR / no server)
+ *
+ * Relay keys live in this device's Keychain: ww_relay_url / ww_relay_id / ww_relay_pass.
+ */
 
 const q = args.queryParameters || {};
 const action = (q.action || "").trim();

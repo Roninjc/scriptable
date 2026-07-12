@@ -88,10 +88,10 @@
     "hash": "1cd79633"
   },
   "CountriesAYearSync": {
-    "version": "1.0.4",
+    "version": "1.0.5",
     "type": "helper",
-    "hash": "5174d909",
-    "lastUpdated": "2026-07-12T11:50:50.804Z"
+    "hash": "6c0fac1e",
+    "lastUpdated": "2026-07-12T12:52:07.273Z"
   },
   "nacl": {
     "version": "1.0.1",
@@ -106,9 +106,9 @@
     "lastUpdated": "2026-07-11T15:29:34.748Z"
   },
   "WorldwideConfig": {
-    "version": "1.0.3",
+    "version": "1.0.4",
     "type": "script",
-    "hash": "4fac9a62",
-    "lastUpdated": "2026-07-12T11:50:50.804Z"
+    "hash": "732f9981",
+    "lastUpdated": "2026-07-12T12:52:07.273Z"
   }
 }
