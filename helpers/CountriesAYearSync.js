@@ -186,19 +186,29 @@ function yearFileName(ifm, dir, year) {
 
 const dayKey = (ms) => new Date(ms).toDateString();
 
-// Reconcile one year's list against the authoritative desired filled set:
-// remove `filled` entries no longer desired (undo/edit), add missing ones,
-// and never touch real entries. Returns the new list + counts.
+// Reconcile one year's list against the authoritative desired filled set.
+// Everything is keyed on isoCountryCode + calendar day (never the country NAME,
+// which can differ by locale and would otherwise create duplicates):
+//   - keep real entries untouched,
+//   - keep a `filled` entry only if it's still desired AND not a duplicate,
+//   - add desired fills not already present (real or filled).
 function reconcileYear(list, patchesForYear, desired) {
-  const kept = list.filter((l) => {
-    if (!l || l.filled !== true) return true; // real entries are untouchable
-    return desired.has(l.isoCountryCode + "|" + dayKey(l.date));
-  });
-  const removed = list.length - kept.length;
+  let removed = 0;
+  const keptFilledKeys = new Set();
+  const kept = [];
+  for (const l of list) {
+    if (!l || l.filled !== true) { kept.push(l); continue; } // real → untouchable
+    const k = l.isoCountryCode + "|" + dayKey(l.date);
+    if (!desired.has(k) || keptFilledKeys.has(k)) { removed++; continue; } // undone/edited or duplicate
+    keptFilledKeys.add(k);
+    kept.push(l);
+  }
   let added = 0;
   for (const p of patchesForYear) {
     const dk = dayKey(p.date);
-    const exists = kept.some((l) => l.country === p.country && dayKey(l.date) === dk);
+    const exists = kept.some(
+      (l) => l.isoCountryCode === p.isoCountryCode && dayKey(l.date) === dk
+    );
     if (!exists) {
       kept.push({ country: p.country, isoCountryCode: p.isoCountryCode, date: p.date, filled: true });
       added++;

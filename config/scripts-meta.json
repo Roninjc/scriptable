@@ -88,10 +88,10 @@
     "hash": "1cd79633"
   },
   "CountriesAYearSync": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "helper",
-    "hash": "-574a30f1",
-    "lastUpdated": "2026-07-11T19:09:46.872Z"
+    "hash": "-4b3d7834",
+    "lastUpdated": "2026-07-12T10:06:54.406Z"
   },
   "nacl": {
     "version": "1.0.1",
