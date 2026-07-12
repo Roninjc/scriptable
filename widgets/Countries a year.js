@@ -5,15 +5,20 @@
  * Countries a year widget
  * 
  * This widget tracks the countries you visit during the year and displays them in a list.
- * It uses iCloud to store the locations data, so it can be shared across devices.
+ * It stores the locations data in Scriptable's documents folder: iCloud when Scriptable
+ * is set up with iCloud (so it's shared across devices), otherwise local storage.
  */
 const countryEmojis = importModule('CountryEmojis')
 const { setWidgetBackground } = importModule('SetWidgetBackground')
 
 const date = new Date().getTime()
 const year = new Date(date).getFullYear()
-  
-const ifm = FileManager.iCloud()
+
+function getFM() {
+  try { return FileManager.iCloud() }
+  catch (e) { return FileManager.local() }
+}
+const ifm = getFM()
 const dir = ifm.documentsDirectory()
 const pathLoc = ifm.joinPath(dir, `locationsStore ${year}.json`)
 

@@ -149,8 +149,13 @@ function decryptEntries(blobB64, passphrase) {
 
 // --- Scriptable-only I/O ---
 
+function getFM() {
+  try { return FileManager.iCloud(); }
+  catch (e) { return FileManager.local(); }
+}
+
 function readAllEntries() {
-  const ifm = FileManager.iCloud();
+  const ifm = getFM();
   const dir = ifm.documentsDirectory();
   let all = [];
   for (const name of ifm.listContents(dir)) {
@@ -223,7 +228,7 @@ function reconcileYear(list, patchesForYear, desired) {
 // Reconcile an authoritative set of filled entries into the yearly JSON files.
 // Shared by the relay path (applyPatches) and the server-less path (applyPatchSet).
 function reconcileToFiles(patches) {
-  const ifm = FileManager.iCloud();
+  const ifm = getFM();
   const dir = ifm.documentsDirectory();
 
   const desired = new Set();

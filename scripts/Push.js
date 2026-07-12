@@ -33,7 +33,11 @@ function bumpVersion(version, type) {
 }
 
 // --- Main Script ---
-const fm = FileManager.iCloud();
+function getFM() {
+  try { return FileManager.iCloud(); }
+  catch (e) { return FileManager.local(); }
+}
+const fm = getFM();
 const dir = fm.documentsDirectory();
 const configPath = fm.joinPath(dir, "config/config.json");
 const metaFilePath = fm.joinPath(dir, "config/scripts-meta.json");

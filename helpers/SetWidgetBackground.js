@@ -18,8 +18,11 @@ module.exports.setWidgetBackground = async (widget) => {
   }
   
     /* Set vars */
-  const fm = FileManager.iCloud();
-  const scriptablePath = '/var/mobile/Library/Mobile Documents/iCloud~dk~simonbs~Scriptable/Documents/';
+  const fm = (() => {
+    try { return FileManager.iCloud(); }
+    catch (e) { return FileManager.local(); }
+  })();
+  const scriptablePath = `${fm.documentsDirectory()}/`;
   const defbgImgFile = `${scriptablePath}defbg.txt`;
   const bgPath = `${scriptablePath}Backgrounds/`
   const themeBackgroundColor = Color.dynamic(Color.white(), Color.darkGray());

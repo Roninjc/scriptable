@@ -33,15 +33,20 @@ const API_URL = 'https://geodata.bymoslo.no/arcgis/rest/services/geodata/Parkeri
   + '&spatialRel=esriSpatialRelIntersects&units=esriSRUnit_Meter&outFields=*'
   + '&returnGeometry=true&outSR=4326&featureEncoding=esriDefault&f=pjson'
 
-// ─── iCloud FileManager ───────────────────────────────────────────────────
+// ─── FileManager ─────────────────────────────
+
+function getFM() {
+  try { return FileManager.iCloud() }
+  catch (e) { return FileManager.local() }
+}
 
 function getCachePath() {
-  const fm = FileManager.iCloud()
+  const fm = getFM()
   return fm.joinPath(fm.documentsDirectory(), CACHE_FILENAME)
 }
 
 async function loadCache() {
-  const fm = FileManager.iCloud()
+  const fm = getFM()
   const path = getCachePath()
 
   if (!fm.fileExists(path)) return null
@@ -64,7 +69,7 @@ async function loadCache() {
 }
 
 function saveCache(features) {
-  const fm = FileManager.iCloud()
+  const fm = getFM()
   const data = { savedAt: new Date().toISOString(), features }
   fm.writeString(getCachePath(), JSON.stringify(data))
 }

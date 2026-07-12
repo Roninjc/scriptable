@@ -29,7 +29,10 @@ try {
     alert.addCancelAction("No")
     const response = await alert.present()
     if (response === 0) {
-      const fm = FileManager.iCloud()
+      const fm = (() => {
+        try { return FileManager.iCloud() }
+        catch (e) { return FileManager.local() }
+      })()
       const cloudDocsDir = fm.documentsDirectory()
       const serversListFilePath = fm.joinPath(cloudDocsDir, "ServersList.js")
       let initialServersList = []
