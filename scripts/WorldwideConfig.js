@@ -79,6 +79,33 @@ if (action === "ping") {
   } catch (e) {
     await note("Worldwide", "Apply failed: " + e);
   }
+} else if (action === "patch") {
+  // Server-less: the fills travel inline in the deep link (from QR or a tap).
+  // Compact format: [{ i: isoCode, d: dateMs, c: countryName }, …]
+  try {
+    let raw = q.data || "";
+    try { raw = decodeURIComponent(raw); } catch (e) {}
+    const arr = JSON.parse(raw);
+    const entries = (Array.isArray(arr) ? arr : []).map((e) => ({
+      country: e.c,
+      isoCountryCode: e.i,
+      date: Number(e.d),
+    }));
+    const sync = importModule("CountriesAYearSync");
+    const res = sync.applyPatchSet(entries);
+    if (!res.ok) {
+      await note("Worldwide", "Couldn't apply repairs: " + (res.reason || "unknown") + ".");
+    } else if ((res.applied || 0) + (res.removed || 0) > 0) {
+      const parts = [];
+      if (res.applied) parts.push(`added ${res.applied}`);
+      if (res.removed) parts.push(`removed ${res.removed}`);
+      await note("Repairs applied", `Updated your JSON (${parts.join(", ")}).`);
+    } else {
+      await note("Worldwide", "Nothing to change — already up to date.");
+    }
+  } catch (e) {
+    await note("Worldwide", "Couldn't read the repairs data: " + e);
+  }
 } else if (action === "clear") {
   for (const k of RELAY_KEYS) {
     if (Keychain.contains(k)) Keychain.remove(k);

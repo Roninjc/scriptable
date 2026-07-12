@@ -218,6 +218,62 @@ function reconcileYear(list, patchesForYear, desired) {
   return { list: kept, added, removed };
 }
 
+// Reconcile an authoritative set of filled entries into the yearly JSON files.
+// Shared by the relay path (applyPatches) and the server-less path (applyPatchSet).
+function reconcileToFiles(patches) {
+  const ifm = FileManager.iCloud();
+  const dir = ifm.documentsDirectory();
+
+  const desired = new Set();
+  const byYear = {};
+  for (const p of patches) {
+    if (!p || !p.country || !p.isoCountryCode || !p.date) continue;
+    desired.add(p.isoCountryCode + "|" + dayKey(p.date));
+    const y = String(new Date(p.date).getFullYear());
+    (byYear[y] = byYear[y] || []).push(p);
+  }
+
+  // Reconcile every year that has patches OR an existing yearly file (so undone
+  // fills are removed even from years no longer present in the set).
+  const years = new Set(Object.keys(byYear));
+  for (const name of ifm.listContents(dir)) {
+    const mth = name.match(/^locationsStore\D*(\d{4})\.json$/i);
+    if (mth) years.add(mth[1]);
+  }
+
+  let applied = 0;
+  let removed = 0;
+  for (const year of years) {
+    const name = yearFileName(ifm, dir, year);
+    const path = ifm.joinPath(dir, name);
+    const exists = ifm.fileExists(path);
+    if (!exists && !byYear[year]) continue;
+
+    let list = [];
+    if (exists) {
+      try { ifm.downloadFileFromiCloud(path); } catch (e) {}
+      try { list = JSON.parse(ifm.readString(path)) || []; } catch (e) { list = []; }
+    }
+
+    const r = reconcileYear(list, byYear[year] || [], desired);
+    if (r.added > 0 || r.removed > 0) {
+      ifm.writeString(path, JSON.stringify(r.list));
+      applied += r.added;
+      removed += r.removed;
+    }
+  }
+
+  return { applied, removed };
+}
+
+// Server-less path (QR / deep link): reconcile an authoritative set of fills
+// passed in directly, without touching the relay.
+function applyPatchSet(entries) {
+  if (!Array.isArray(entries)) return { ok: false, reason: "bad-data" };
+  const { applied, removed } = reconcileToFiles(entries);
+  return { ok: true, applied, removed };
+}
+
 // Fetch the PWA's gap repairs from the relay and reconcile them into the yearly
 // JSON files. The patches blob is the authoritative set of manual fills, so
 // this both ADDS new fills and REMOVES ones the user has undone or edited
@@ -261,48 +317,7 @@ async function applyPatches() {
     return { ok: false, reason: "network", status };
   }
 
-  const ifm = FileManager.iCloud();
-  const dir = ifm.documentsDirectory();
-
-  // Authoritative desired set + per-year grouping.
-  const desired = new Set();
-  const byYear = {};
-  for (const p of patches) {
-    if (!p || !p.country || !p.isoCountryCode || !p.date) continue;
-    desired.add(p.isoCountryCode + "|" + dayKey(p.date));
-    const y = String(new Date(p.date).getFullYear());
-    (byYear[y] = byYear[y] || []).push(p);
-  }
-
-  // Reconcile every year that has patches OR an existing yearly file (so undone
-  // fills are removed even from years no longer present in the set).
-  const years = new Set(Object.keys(byYear));
-  for (const name of ifm.listContents(dir)) {
-    const mth = name.match(/^locationsStore\D*(\d{4})\.json$/i);
-    if (mth) years.add(mth[1]);
-  }
-
-  let applied = 0;
-  let removed = 0;
-  for (const year of years) {
-    const name = yearFileName(ifm, dir, year);
-    const path = ifm.joinPath(dir, name);
-    const exists = ifm.fileExists(path);
-    if (!exists && !byYear[year]) continue; // nothing to add and no file to clean
-
-    let list = [];
-    if (exists) {
-      try { ifm.downloadFileFromiCloud(path); } catch (e) {}
-      try { list = JSON.parse(ifm.readString(path)) || []; } catch (e) { list = []; }
-    }
-
-    const r = reconcileYear(list, byYear[year] || [], desired);
-    if (r.added > 0 || r.removed > 0) {
-      ifm.writeString(path, JSON.stringify(r.list));
-      applied += r.added;
-      removed += r.removed;
-    }
-  }
+  const { applied, removed } = reconcileToFiles(patches);
 
   if (blob) Keychain.set("ww_patches_seen", blob);
   else if (Keychain.contains("ww_patches_seen")) Keychain.remove("ww_patches_seen");
@@ -328,4 +343,4 @@ async function pushToRelay() {
   return { ok: status === 200, status, count: entries.length };
 }
 
-module.exports = { pushToRelay, applyPatches, encryptEntries, decryptEntries, readAllEntries };
+module.exports = { pushToRelay, applyPatches, applyPatchSet, encryptEntries, decryptEntries, readAllEntries };
