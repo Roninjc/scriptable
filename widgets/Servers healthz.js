@@ -30,8 +30,13 @@ try {
     const response = await alert.present()
     if (response === 0) {
       const fm = (() => {
-        try { return FileManager.iCloud() }
-        catch (e) { return FileManager.local() }
+        try {
+          const m = FileManager.iCloud()
+          m.documentsDirectory() // iCloud() never throws on its own; the check runs on first use
+          return m
+        } catch (e) {
+          return FileManager.local()
+        }
       })()
       const cloudDocsDir = fm.documentsDirectory()
       const serversListFilePath = fm.joinPath(cloudDocsDir, "ServersList.js")

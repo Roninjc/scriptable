@@ -150,8 +150,13 @@ function decryptEntries(blobB64, passphrase) {
 // --- Scriptable-only I/O ---
 
 function getFM() {
-  try { return FileManager.iCloud(); }
-  catch (e) { return FileManager.local(); }
+  try {
+    const fm = FileManager.iCloud();
+    fm.documentsDirectory(); // iCloud() never throws on its own; the check runs on first use
+    return fm;
+  } catch (e) {
+    return FileManager.local();
+  }
 }
 
 function readAllEntries() {

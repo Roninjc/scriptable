@@ -19,8 +19,13 @@ module.exports.setWidgetBackground = async (widget) => {
   
     /* Set vars */
   const fm = (() => {
-    try { return FileManager.iCloud(); }
-    catch (e) { return FileManager.local(); }
+    try {
+      const m = FileManager.iCloud();
+      m.documentsDirectory(); // iCloud() never throws on its own; the check runs on first use
+      return m;
+    } catch (e) {
+      return FileManager.local();
+    }
   })();
   const scriptablePath = `${fm.documentsDirectory()}/`;
   const defbgImgFile = `${scriptablePath}defbg.txt`;
