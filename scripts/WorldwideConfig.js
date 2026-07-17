@@ -28,6 +28,8 @@ async function note(title, message) {
 
 // ww_relay_salt / ww_relay_key hold the cached encryption key (derived once
 // here, in app context, because scrypt doesn't fit in the widget's memory).
+const BACK_HINT = "\n\nReturn to Worldwide with the ◀ button in the top-left corner.";
+
 const RELAY_KEYS = [
   "ww_relay_url",
   "ww_relay_id",
@@ -69,7 +71,14 @@ if (action === "ping") {
     } catch (e) {
       extra = `\n\nConfig saved. First upload skipped (${e}).`;
     }
-    await note("Worldwide sync enabled", "This device will now publish to the relay." + extra);
+    // iOS can't deep-link back into an installed PWA (an https URL would open
+    // Safari, whose storage is separate from the home-screen app), so the best
+    // we can offer is pointing at the system back-chevron. The PWA re-syncs by
+    // itself when it regains focus.
+    await note(
+      "Worldwide sync enabled",
+      "This device will now publish to the relay." + extra + BACK_HINT
+    );
   }
 } else if (action === "apply") {
   try {
@@ -87,7 +96,7 @@ if (action === "ping") {
       const parts = [];
       if (res.applied) parts.push(`added ${res.applied}`);
       if (res.removed) parts.push(`removed ${res.removed}`);
-      await note("Repairs synced", `Updated your JSON (${parts.join(", ")}).` + up);
+      await note("Repairs synced", `Updated your JSON (${parts.join(", ")}).` + up + BACK_HINT);
     } else {
       await note("Worldwide", res.empty ? "No repairs waiting." : "Nothing to change.");
     }
