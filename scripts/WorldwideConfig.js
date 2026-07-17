@@ -26,7 +26,15 @@ async function note(title, message) {
   await a.present();
 }
 
-const RELAY_KEYS = ["ww_relay_url", "ww_relay_id", "ww_relay_pass"];
+// ww_relay_salt / ww_relay_key hold the cached encryption key (derived once
+// here, in app context, because scrypt doesn't fit in the widget's memory).
+const RELAY_KEYS = [
+  "ww_relay_url",
+  "ww_relay_id",
+  "ww_relay_pass",
+  "ww_relay_salt",
+  "ww_relay_key",
+];
 
 if (action === "ping") {
   // Spike: prove the app can launch this script with parameters. No side effects.
@@ -47,6 +55,9 @@ if (action === "ping") {
     let extra = "";
     try {
       const sync = importModule("CountriesAYearSync");
+      // The passphrase may have changed → drop the cached key; the push below
+      // re-derives and re-caches it (we're in app context, scrypt is safe here).
+      sync.clearCachedKey();
       const ap = await sync.applyPatches();
       const res = await sync.pushToRelay();
       const merged =

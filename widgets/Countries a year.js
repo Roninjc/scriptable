@@ -86,13 +86,19 @@ async function createWidget() {
       ifm.writeString(pathLoc, JSON.stringify(locsToStore))
       storedLocs = [ ...locsToStore ]
 
-      // A new day was recorded → merge any pending gap repairs from the app,
-      // then publish the encrypted dataset to the relay. Both are no-ops unless
-      // sync was enabled from the Worldwide app (keys in Keychain).
+      // A new day was recorded → publish the encrypted dataset to the relay.
+      // No-op unless sync was enabled from the Worldwide app (keys in Keychain).
+      // NOTE: no applyPatches() here — decrypting the patches mailbox runs
+      // scrypt, whose 32 MiB buffer exceeds the widget extension's memory
+      // limit and gets the process killed. Repairs are reconciled in app
+      // context instead (WorldwideConfig action=set / apply). The push itself
+      // is widget-safe: it uses the cached key, no scrypt involved.
       try {
         const sync = importModule('CountriesAYearSync')
-        await sync.applyPatches()
-        await sync.pushToRelay()
+        const res = await sync.pushToRelay()
+        if (res && res.ok === false && res.reason !== 'not-configured') {
+          console.warn(`Relay push failed: ${res.reason ?? res.status}`)
+        }
       } catch (e) {
         console.warn(`Relay sync failed: ${e}`)
       }

@@ -120,11 +120,10 @@ function deriveKey(passphrase, salt) {
   );
 }
 
-// saltIn/nonceIn are only passed by tests; production generates them randomly.
-function encryptEntries(entries, passphrase, saltIn, nonceIn) {
-  const salt = saltIn || randomBytes(SALT_LEN);
+// Core encryptor for a pre-derived key. The salt is packed into the blob (the
+// PWA re-derives from it), so a cached key + its salt produce the same format.
+function encryptEntriesWithKey(entries, key, salt, nonceIn) {
   const nonce = nonceIn || randomBytes(NONCE_LEN);
-  const key = deriveKey(passphrase, salt);
   const box = nacl.secretbox(utf8Encode(JSON.stringify(entries)), nonce, key);
 
   const packed = new Uint8Array(SALT_LEN + NONCE_LEN + box.length);
@@ -132,6 +131,13 @@ function encryptEntries(entries, passphrase, saltIn, nonceIn) {
   packed.set(nonce, SALT_LEN);
   packed.set(box, SALT_LEN + NONCE_LEN);
   return b64Encode(packed);
+}
+
+// saltIn/nonceIn are only passed by tests; production generates them randomly.
+function encryptEntries(entries, passphrase, saltIn, nonceIn) {
+  const salt = saltIn || randomBytes(SALT_LEN);
+  const key = deriveKey(passphrase, salt);
+  return encryptEntriesWithKey(entries, key, salt, nonceIn);
 }
 
 // Inverse of encryptEntries. Throws if the passphrase is wrong or data corrupt.
@@ -183,6 +189,38 @@ function readAllEntries() {
 
 function kc(key) {
   return Keychain.contains(key) ? Keychain.get(key) : null;
+}
+
+// ── Cached encryption key ────────────────────────────────────────────
+// scrypt(N=32768, r=8) allocates a 32 MiB work buffer — more memory than iOS
+// grants the whole widget extension, so deriving the key inside the widget
+// kills the process and the publish silently never happens. Instead the key
+// is derived ONCE in app context (WorldwideConfig action=set, or any app-run
+// push) and cached in the Keychain together with its salt; the widget then
+// only does secretbox, which is cheap. The salt still travels inside every
+// blob, so the PWA's decrypt path is untouched.
+const KEY_CACHE_SALT = "ww_relay_salt";
+const KEY_CACHE_KEY = "ww_relay_key";
+
+function cachedKey(pass) {
+  const s = kc(KEY_CACHE_SALT);
+  const k = kc(KEY_CACHE_KEY);
+  if (s && k) return { salt: b64Decode(s), key: b64Decode(k) };
+  // No cache yet (first push after set, or a pre-cache config). Never derive
+  // inside the widget — that's the crash we're avoiding; fail cleanly and let
+  // the next app-context run build the cache.
+  if (typeof config !== "undefined" && config.runsInWidget) return null;
+  const salt = randomBytes(SALT_LEN);
+  const key = deriveKey(pass, salt);
+  Keychain.set(KEY_CACHE_SALT, b64Encode(salt));
+  Keychain.set(KEY_CACHE_KEY, b64Encode(key));
+  return { salt, key };
+}
+
+// Must be called whenever the passphrase changes or sync is disabled.
+function clearCachedKey() {
+  if (Keychain.contains(KEY_CACHE_SALT)) Keychain.remove(KEY_CACHE_SALT);
+  if (Keychain.contains(KEY_CACHE_KEY)) Keychain.remove(KEY_CACHE_KEY);
 }
 
 // Find the existing yearly file for `year`, tolerating the widget's naming
@@ -344,7 +382,9 @@ async function pushToRelay() {
   if (!url || !id || !pass) return { ok: false, reason: "not-configured" };
 
   const entries = readAllEntries();
-  const blob = encryptEntries(entries, pass);
+  const ck = cachedKey(pass);
+  if (!ck) return { ok: false, reason: "no-cached-key" };
+  const blob = encryptEntriesWithKey(entries, ck.key, ck.salt);
 
   const req = new Request(`${url.replace(/\/+$/, "")}/${id}`);
   req.method = "PUT";
@@ -355,4 +395,13 @@ async function pushToRelay() {
   return { ok: status === 200, status, count: entries.length };
 }
 
-module.exports = { pushToRelay, applyPatches, applyPatchSet, encryptEntries, decryptEntries, readAllEntries };
+module.exports = {
+  pushToRelay,
+  applyPatches,
+  applyPatchSet,
+  clearCachedKey,
+  encryptEntries,
+  encryptEntriesWithKey,
+  decryptEntries,
+  readAllEntries,
+};
