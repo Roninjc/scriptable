@@ -96,6 +96,116 @@ async function resolvePending() {
   return resolved
 }
 
+/* Ring chart: one arc per country, sized by days; the rest of the year is a gap */
+const RING_COLORS = ['#4C9AFF', '#FF6B6B', '#2ED573', '#FFA502', '#A55EEA', '#1ABC9C', '#FF6EB4', '#F7DC6F', '#8395A7']
+const MAX_SLICES = 8 // more countries than this are merged into a "+N" slice
+const MIN_LABEL_SEP = 28 // degrees between flags so they don't overlap
+
+const daysInYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365
+
+// A day with several countries is split equally among them, so the slices add
+// up to the days that have records (never more than the days in the year).
+function buildRing(locs) {
+  const byDay = {}
+  for (const l of locs) (byDay[dayKey(l.date)] ??= []).push(l)
+  const byCountry = {}
+  for (const k in byDay) {
+    const countries = [...new Set(byDay[k].map(l => l.isoCountryCode))]
+    for (const iso of countries) {
+      const first = byDay[k].find(l => l.isoCountryCode === iso)
+      const c = (byCountry[iso] ??= { iso, country: first.country, days: 0, first: first.date })
+      c.days += 1 / countries.length
+      c.first = Math.min(c.first, first.date)
+    }
+  }
+  let slices = Object.values(byCountry).sort((a, b) => b.days - a.days)
+  if (slices.length > MAX_SLICES) {
+    const rest = slices.slice(MAX_SLICES)
+    slices = slices.slice(0, MAX_SLICES)
+    slices.push({ iso: null, other: rest.length, days: rest.reduce((t, c) => t + c.days, 0), first: Infinity })
+  }
+  slices.sort((a, b) => a.first - b.first) // chronological, "+N" last
+  return { slices, recordedDays: Object.keys(byDay).length, total: daysInYear(year) }
+}
+
+function arcPath(cx, cy, rOut, rIn, a0, a1) {
+  const path = new Path()
+  const steps = Math.max(2, Math.ceil(((a1 - a0) * 180 / Math.PI) / 3))
+  for (let i = 0; i <= steps; i++) {
+    const a = a0 + (a1 - a0) * i / steps
+    const pt = new Point(cx + rOut * Math.cos(a), cy + rOut * Math.sin(a))
+    i === 0 ? path.move(pt) : path.addLine(pt)
+  }
+  for (let i = steps; i >= 0; i--) {
+    const a = a0 + (a1 - a0) * i / steps
+    path.addLine(new Point(cx + rIn * Math.cos(a), cy + rIn * Math.sin(a)))
+  }
+  path.closeSubpath()
+  return path
+}
+
+function drawRing({ slices, recordedDays, total }, dark) {
+  const S = 400, cx = S / 2, cy = S / 2
+  const rOut = 128, rIn = 94, rLabel = 162
+  const ctx = new DrawContext()
+  ctx.size = new Size(S, S)
+  ctx.opaque = false
+  ctx.respectScreenScale = true
+
+  const gap = slices.length > 1 ? 0.03 : 0 // radians between slices
+  const labels = []
+  let start = -Math.PI / 2
+
+  const fill = (a0, a1, color) => {
+    ctx.setFillColor(color)
+    ctx.addPath(arcPath(cx, cy, rOut, rIn, a0, a1))
+    ctx.fillPath()
+  }
+
+  slices.forEach((sl, i) => {
+    const sweep = sl.days / total * 2 * Math.PI
+    const a0 = start + gap / 2
+    const a1 = Math.max(start + sweep - gap / 2, a0 + 0.01)
+    fill(a0, a1, new Color(sl.iso ? RING_COLORS[i % (RING_COLORS.length - 1)] : RING_COLORS[RING_COLORS.length - 1]))
+    labels.push({ sl, angle: (start + sweep / 2) * 180 / Math.PI })
+    start += sweep
+  })
+
+  // Days of the year without any record
+  if (start < 3 * Math.PI / 2 - 0.01) {
+    fill(start + gap / 2, 3 * Math.PI / 2 - gap / 2, dark ? new Color('#FFFFFF', 0.12) : new Color('#000000', 0.10))
+  }
+
+  // Keep neighbouring flags apart (labels are in clockwise order from the top)
+  for (let i = 1; i < labels.length; i++) {
+    labels[i].angle = Math.max(labels[i].angle, labels[i - 1].angle + MIN_LABEL_SEP)
+  }
+  const textColor = dark ? Color.white() : Color.darkGray()
+  ctx.setTextAlignedCenter()
+  for (const { sl, angle } of labels) {
+    const a = angle * Math.PI / 180
+    const x = cx + rLabel * Math.cos(a), y = cy + rLabel * Math.sin(a)
+    if (sl.iso) {
+      const flag = countryEmojis.find(e => e.isoCountryCode === sl.iso)?.emojiCode ?? sl.iso
+      ctx.setFont(Font.systemFont(36))
+      ctx.drawTextInRect(flag, new Rect(x - 30, y - 24, 60, 48))
+    } else {
+      ctx.setFont(Font.boldSystemFont(28))
+      ctx.setTextColor(textColor)
+      ctx.drawTextInRect(`+${sl.other}`, new Rect(x - 30, y - 17, 60, 36))
+    }
+  }
+
+  // Center: days with at least one record (not number of records)
+  ctx.setTextColor(textColor)
+  ctx.setFont(Font.heavyMonospacedSystemFont(58))
+  ctx.drawTextInRect(`${recordedDays}`, new Rect(cx - 70, cy - 46, 140, 66))
+  ctx.setFont(Font.semiboldSystemFont(24))
+  ctx.setTextColor(new Color(textColor.hex, 0.7))
+  ctx.drawTextInRect(`${year}`, new Rect(cx - 70, cy + 20, 140, 30))
+  return ctx.getImage()
+}
+
 async function loadYear(y) {
   const path = pathForYear(y)
   if (!ifm.fileExists(path)) return []
@@ -212,57 +322,20 @@ async function createWidget() {
     msg = `- ${e} | ${pathLoc}`
   }
 
-  const locsByCountry = storedLocs?.reduce((group, loc) => {
-    const { country } = loc
-    group[country] = group[country] ?? []
-    group[country].push(loc)
-    return group
-  }, {})
-
-    /* Create the widget */
+  /* Create the widget */
   const widget = new ListWidget();
   widget.textColor = themeTextColor;
+  widget.setPadding(4, 4, 4, 4)
 
-
-    /* Design the widget header */
-  let headerStack = widget.addStack();
-  headerStack.centerAlignContent()
-  const titleStack = headerStack.addText(`${year} in...`);
-  titleStack.font = Font.heavyMonospacedSystemFont(18);
-  headerStack.addSpacer(2);
-  const logoStack = headerStack.addStack();
-  
-    /* Add a logo icon */
-  const symbol = SFSymbol.named('globe.europe.africa.fill')
-  const wimgLogo = logoStack.addImage(symbol.image)
-  wimgLogo.imageSize = new Size(30, 30)
-  wimgLogo.tintColor = themeLogoColor
-
-  widget.addSpacer();
-
-    /* Add the countries */
-  const bodyStack = widget.addStack()
-  bodyStack.layoutVertically()
-
-  if (!msg) {
-  for (const loc in locsByCountry) {
-    const countryStack = bodyStack.addStack()
-    let flag = ''
-
-    if (!!countryEmojis && countryEmojis.length > 0) {
-      flag = countryEmojis.find((emoji) => emoji.isoCountryCode === locsByCountry[loc][0].isoCountryCode)
-    }
-
-    const days = locsByCountry[loc].length
-    const text = countryStack.addText(`${flag?.emojiCode} ${loc} ${days}`)
-    text.font = Font.semiboldSystemFont(15)
-    text.leftAlignText()
-  }
+  if (msg) {
+    widget.addText(msg)
   } else {
-    bodyStack.addText(msg)
+    const ring = buildRing(storedLocs)
+    const img = drawRing(ring, Device.isUsingDarkAppearance())
+    const wimg = widget.addImage(img)
+    wimg.centerAlignImage()
   }
-  widget.addSpacer();
-  
+
   await setWidgetBackground(widget)
 
     /* Done: Widget is now ready to be displayed */
