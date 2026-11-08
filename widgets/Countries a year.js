@@ -97,9 +97,8 @@ async function resolvePending() {
 }
 
 /* Ring chart: one arc per country, sized by days; the rest of the year is a gap */
-const RING_COLORS = ['#4C9AFF', '#FF6B6B', '#2ED573', '#FFA502', '#A55EEA', '#1ABC9C', '#FF6EB4', '#F7DC6F', '#8395A7']
-const MAX_SLICES = 8 // more countries than this are merged into a "+N" slice
-const MIN_LABEL_SEP = 28 // degrees between flags so they don't overlap
+const RING_COLORS = ['#4C9AFF', '#FF6B6B', '#2ED573', '#FFA502', '#A55EEA', '#1ABC9C', '#FF6EB4', '#F7DC6F', '#E17055']
+const MIN_FLAG_DAYS = 12 // shorter slices are drawn without flag (it wouldn't fit on the arc)
 
 const daysInYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365
 
@@ -118,13 +117,7 @@ function buildRing(locs) {
       c.first = Math.min(c.first, first.date)
     }
   }
-  let slices = Object.values(byCountry).sort((a, b) => b.days - a.days)
-  if (slices.length > MAX_SLICES) {
-    const rest = slices.slice(MAX_SLICES)
-    slices = slices.slice(0, MAX_SLICES)
-    slices.push({ iso: null, other: rest.length, days: rest.reduce((t, c) => t + c.days, 0), first: Infinity })
-  }
-  slices.sort((a, b) => a.first - b.first) // chronological, "+N" last
+  const slices = Object.values(byCountry).sort((a, b) => a.first - b.first) // chronological
   return { slices, recordedDays: Object.keys(byDay).length, total: daysInYear(year) }
 }
 
@@ -146,14 +139,14 @@ function arcPath(cx, cy, rOut, rIn, a0, a1) {
 
 function drawRing({ slices, recordedDays, total }, dark) {
   const S = 400, cx = S / 2, cy = S / 2
-  const rOut = 128, rIn = 94, rLabel = 162
+  const rOut = 192, rIn = 136, rMid = (rOut + rIn) / 2
   const ctx = new DrawContext()
   ctx.size = new Size(S, S)
   ctx.opaque = false
   ctx.respectScreenScale = true
 
   const gap = slices.length > 1 ? 0.03 : 0 // radians between slices
-  const labels = []
+  const flags = []
   let start = -Math.PI / 2
 
   const fill = (a0, a1, color) => {
@@ -166,8 +159,8 @@ function drawRing({ slices, recordedDays, total }, dark) {
     const sweep = sl.days / total * 2 * Math.PI
     const a0 = start + gap / 2
     const a1 = Math.max(start + sweep - gap / 2, a0 + 0.01)
-    fill(a0, a1, new Color(sl.iso ? RING_COLORS[i % (RING_COLORS.length - 1)] : RING_COLORS[RING_COLORS.length - 1]))
-    labels.push({ sl, angle: (start + sweep / 2) * 180 / Math.PI })
+    fill(a0, a1, new Color(RING_COLORS[i % RING_COLORS.length]))
+    if (sl.days >= MIN_FLAG_DAYS) flags.push({ sl, angle: start + sweep / 2 })
     start += sweep
   })
 
@@ -176,33 +169,29 @@ function drawRing({ slices, recordedDays, total }, dark) {
     fill(start + gap / 2, 3 * Math.PI / 2 - gap / 2, dark ? new Color('#FFFFFF', 0.12) : new Color('#000000', 0.10))
   }
 
-  // Keep neighbouring flags apart (labels are in clockwise order from the top)
-  for (let i = 1; i < labels.length; i++) {
-    labels[i].angle = Math.max(labels[i].angle, labels[i - 1].angle + MIN_LABEL_SEP)
-  }
-  const textColor = dark ? Color.white() : Color.darkGray()
+  // Flags sit centered on their own arc
   ctx.setTextAlignedCenter()
-  for (const { sl, angle } of labels) {
-    const a = angle * Math.PI / 180
-    const x = cx + rLabel * Math.cos(a), y = cy + rLabel * Math.sin(a)
-    if (sl.iso) {
-      const flag = countryEmojis.find(e => e.isoCountryCode === sl.iso)?.emojiCode ?? sl.iso
-      ctx.setFont(Font.systemFont(36))
-      ctx.drawTextInRect(flag, new Rect(x - 30, y - 24, 60, 48))
-    } else {
-      ctx.setFont(Font.boldSystemFont(28))
-      ctx.setTextColor(textColor)
-      ctx.drawTextInRect(`+${sl.other}`, new Rect(x - 30, y - 17, 60, 36))
-    }
+  ctx.setFont(Font.systemFont(28))
+  for (const { sl, angle } of flags) {
+    const x = cx + rMid * Math.cos(angle), y = cy + rMid * Math.sin(angle)
+    const flag = countryEmojis.find(e => e.isoCountryCode === sl.iso)?.emojiCode ?? sl.iso
+    ctx.drawTextInRect(flag, new Rect(x - 30, y - 20, 60, 40))
   }
 
   // Center: days with at least one record (not number of records)
+  const textColor = dark ? Color.white() : Color.darkGray()
+  const faded = new Color(textColor.hex, 0.7)
   ctx.setTextColor(textColor)
-  ctx.setFont(Font.heavyMonospacedSystemFont(58))
-  ctx.drawTextInRect(`${recordedDays}`, new Rect(cx - 70, cy - 46, 140, 66))
+  ctx.setFont(Font.heavyMonospacedSystemFont(62))
+  ctx.drawTextInRect(`${recordedDays}`, new Rect(cx - 80, cy - 58, 160, 72))
+  ctx.setTextColor(faded)
   ctx.setFont(Font.semiboldSystemFont(24))
-  ctx.setTextColor(new Color(textColor.hex, 0.7))
-  ctx.drawTextInRect(`${year}`, new Rect(cx - 70, cy + 20, 140, 30))
+  ctx.drawTextInRect(`${year}`, new Rect(cx - 80, cy + 16, 160, 30))
+  const hidden = slices.length - flags.length
+  if (hidden > 0) {
+    ctx.setFont(Font.systemFont(20))
+    ctx.drawTextInRect(`+${hidden} more`, new Rect(cx - 80, cy + 46, 160, 26))
+  }
   return ctx.getImage()
 }
 
