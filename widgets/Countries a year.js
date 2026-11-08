@@ -49,11 +49,14 @@ async function createWidget() {
   let storedLocs = []
   let currentLoc = {}
   
+  let location = null
+  let reverseLocation = null
+  
   let msg = ''
 
   try {
-    const location = await Location.current()
-    const reverseLocation = await Location.reverseGeocode(location.latitude, location.longitude, "en_US")
+    location = await Location.current()
+    reverseLocation = await Location.reverseGeocode(location.latitude, location.longitude, "en_US")
 
     currentLoc = {
       "country": reverseLocation[0].country,
@@ -61,7 +64,11 @@ async function createWidget() {
       date
     }
   } catch (error) {
-    console.warn(`Error trying to get location: ${error}`)
+    if (location && typeof location === "object" && location.latitude && location.longitude) {
+      console.log('yes')
+    } else {
+      console.warn(`Error trying to get location: ${error}`)
+    }
   }
   
   if (!ifm.fileExists(pathLoc)) {
