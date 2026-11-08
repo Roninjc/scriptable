@@ -14,31 +14,31 @@
   "Pull": {
     "version": "1.1.5",
     "type": "script",
-    "lastUpdated": "2026-07-12T20:02:54.840Z",
+    "lastUpdated": "2026-07-17T12:28:27.584Z",
     "hash": "1dfd987c"
   },
   "Countries a year": {
-    "version": "1.1.6",
+    "version": "1.2.0",
     "type": "widget",
-    "lastUpdated": "2026-07-17T12:28:09.108Z",
-    "hash": "-34f85f36"
+    "lastUpdated": "2026-11-08T13:46:34.753Z",
+    "hash": "227da28"
   },
   "Servers healthz": {
     "version": "1.1.4",
     "type": "widget",
-    "lastUpdated": "2026-07-12T20:02:54.840Z",
+    "lastUpdated": "2026-07-17T12:28:27.586Z",
     "hash": "26a60246"
   },
   "Push": {
     "version": "1.1.7",
     "type": "script",
-    "lastUpdated": "2026-07-12T20:02:54.840Z",
+    "lastUpdated": "2026-07-17T12:28:27.588Z",
     "hash": "1ecf3a7a"
   },
   "SetWidgetBackground": {
     "version": "1.0.6",
     "type": "helper",
-    "lastUpdated": "2026-07-31T12:12:08.703Z",
+    "lastUpdated": "2026-07-31T12:54:52.639Z",
     "hash": "-6dbe4deb"
   },
   "Git": {
@@ -64,8 +64,8 @@
     "lastUpdated": "2025-11-01T17:10:11.860Z"
   },
   "Transparent & Blurred Widgets": {
-    "hash": "-74c0bf45",
-    "lastUpdated": "2026-03-29T18:29:27.513Z"
+    "hash": "-5b77fa69",
+    "lastUpdated": "2026-11-08T13:46:34.753Z"
   },
   "OnCall": {
     "version": "1.0.0",
@@ -74,65 +74,71 @@
     "hash": "1803d3df"
   },
   "ServersList": {
-    "hash": "635e4cb",
-    "lastUpdated": "2026-07-04T10:48:39.138Z"
+    "hash": "71de3108",
+    "lastUpdated": "2026-11-08T13:46:34.753Z"
   },
   "Untitled Script": {
-    "hash": "2ff21e05",
-    "lastUpdated": "2026-03-29T18:29:27.513Z"
+    "hash": "-c6f56b",
+    "lastUpdated": "2026-11-08T13:46:34.753Z"
   },
   "McParking": {
     "version": "1.0.3",
     "type": "script",
-    "lastUpdated": "2026-07-12T20:02:54.840Z",
+    "lastUpdated": "2026-07-17T12:28:27.602Z",
     "hash": "2f9355e4"
   },
   "CountriesAYearSync": {
     "version": "1.0.8",
     "type": "helper",
-    "hash": "503f076",
-    "lastUpdated": "2026-07-17T12:28:09.108Z"
+    "lastUpdated": "2026-07-17T12:42:30.809Z",
+    "hash": "503f076"
   },
   "nacl": {
     "version": "1.0.1",
     "type": "helper",
-    "hash": "-111b1eff",
-    "lastUpdated": "2026-07-11T15:44:52.265Z"
+    "lastUpdated": "2026-07-11T18:46:35.525Z",
+    "hash": "-111b1eff"
   },
   "scrypt": {
     "version": "1.0.1",
     "type": "helper",
-    "hash": "6c9c69f2",
-    "lastUpdated": "2026-07-11T15:29:34.748Z"
+    "lastUpdated": "2026-07-11T15:45:40.666Z",
+    "hash": "6c9c69f2"
+  },
+  "Setup Worldwide Sync": {
+    "version": "1.0.0",
+    "type": "script",
+    "lastUpdated": "2026-07-11T14:03:28.314Z",
+    "hash": "215eb63d"
   },
   "WorldwideConfig": {
     "version": "1.0.6",
     "type": "script",
-    "hash": "-2b10e376",
-    "lastUpdated": "2026-07-17T12:41:01.053Z"
+    "lastUpdated": "2026-07-17T12:42:38.110Z",
+    "hash": "-2b10e376"
   },
   "BackgroundConfig": {
     "version": "1.0.0",
     "type": "helper",
-    "hash": "4466156f",
-    "lastUpdated": "2026-07-31T12:12:08.703Z"
+    "lastUpdated": "2026-07-31T12:54:52.668Z",
+    "hash": "4466156f"
   },
   "GenerateWidgetBackgrounds": {
     "version": "1.0.0",
     "type": "script",
-    "hash": "-25d5b924",
-    "lastUpdated": "2026-07-31T12:12:08.703Z"
+    "lastUpdated": "2026-07-31T12:54:52.670Z",
+    "hash": "-25d5b924"
   },
   "ManageBackgrounds": {
     "version": "1.0.0",
     "type": "script",
-    "hash": "6eb00d90",
-    "lastUpdated": "2026-07-31T12:12:08.703Z"
+    "lastUpdated": "2026-07-31T12:54:52.671Z",
+    "hash": "6eb00d90"
   },
   "SetActiveBackground": {
     "version": "1.0.0",
     "type": "script",
-    "hash": "-56d47e2f",
-    "lastUpdated": "2026-07-31T12:12:08.703Z"
+    "lastUpdated": "2026-07-31T12:54:52.672Z",
+    "hash": "-56d47e2f"
   }
 }
