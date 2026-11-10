@@ -15,10 +15,16 @@ Scriptable runs every script from a single flat iCloud folder. This repo organis
 ├── helpers/
 │   ├── Git.js               # GitHub sync helpers + content hash
 │   ├── SetWidgetBackground.js
-│   └── CountryEmojis.js
+│   ├── CountryEmojis.js
+│   ├── CountryColors.js     # dominant flag colors per ISO code
+│   └── CountryFlags.js      # round flag icons: download + cache in Documents/Flags
+├── assets/
+│   └── flags/               # round flag PNGs (128px, one per ISO code), MIT, see LICENSE
+├── preview/                 # render a widget on the Mac without the iPhone (see preview/README.md)
 ├── scripts/
 │   ├── Pull.js              # GitHub → device sync
 │   ├── Push.js              # device → GitHub sync
+│   ├── DownloadFlags.js     # caches the round flags of the countries you visited
 │   ├── McParking.js         # nearest MC parking finder (Oslo), run from Shortcuts
 │   └── OnCall.js            # on-call shift / Focus mode helper, run from Shortcuts
 ├── widgets/
@@ -39,12 +45,13 @@ Scriptable runs every script from a single flat iCloud folder. This repo organis
 | --- | --- |
 | **Servers healthz** | Checks a list of servers (`ServersList.js`, device-only) and shows each one's status with a colour-coded icon. Loads all servers in parallel with a short request timeout so a slow/timing-out server never blocks rendering on the Home Screen, and can send a notification when a server is down. |
 | **Shopping list** | Fetches the shopping list from Home Assistant and displays it; falls back to the last stored list with an offline indicator when there's no connection. |
-| **Countries a year** | Tracks the countries you've visited during the current year (stored in iCloud so it's shared across devices) and renders them with flag emojis. |
+| **Countries a year** | Tracks the countries you've visited during the current year (stored in iCloud so it's shared across devices) and draws them as a calendar ring: each arc sits where those days really were, tinted with the country's flag color, with round flag badges, month ticks and a marker for today. |
 
 ### Scripts
 
 | Script | What it does |
 | --- | --- |
+| **DownloadFlags** | Caches the round flag icons (from `assets/flags/` in this repo) for every country in your location stores, so *Countries a year* can draw them offline. Run with the text `all` from Shortcuts to cache every flag. Needs the GitHub token in the Keychain. |
 | **Pull** | Syncs the device *from* GitHub. See [Sync workflow](#sync-workflow). |
 | **Push** | Syncs the device *to* GitHub. See [Sync workflow](#sync-workflow). |
 | **McParking** | MC parking finder for Oslo, triggered from iOS Shortcuts with `{ lat, lng }` to find the nearest spots, or `{ action: "update" }` to refresh its cache from the Oslo geodata API. |
@@ -56,6 +63,8 @@ Scriptable runs every script from a single flat iCloud folder. This repo organis
 | --- | --- |
 | **Git** | Shared helpers used by Push/Pull: `computeHash`, `loadFmJSON`, `errorAlert`, `fetchGitHubFile`, `fetchGitHubJSON`. |
 | **SetWidgetBackground** | Sets a widget's background from its widget parameter (a `Backgrounds/…` image path or a colour), falling back to a default colour. |
+| **CountryColors** | Dominant flag colors per ISO code (extracted from the flag emojis), used to tint each country in *Countries a year*. |
+| **CountryFlags** | Loads the round flag icons cached in `Documents/Flags/`, downloading missing ones from `assets/flags/` with the Keychain GitHub token. |
 | **CountryEmojis** | Country name → ISO code → flag emoji lookup table, used by *Countries a year*. |
 
 ## Sync workflow

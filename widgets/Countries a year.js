@@ -4,12 +4,15 @@
 /**
  * Countries a year widget
  * 
- * This widget tracks the countries you visit during the year and displays them in a list.
+ * This widget tracks the countries you visit during the year and draws them as a calendar ring
+ * (each arc where those days were) with round flag badges, tinted with each flag's own color.
  * It stores the locations data in Scriptable's documents folder: iCloud when Scriptable
  * is set up with iCloud (so it's shared across devices), otherwise local storage.
  */
 const countryEmojis = importModule('CountryEmojis')
 const { setWidgetBackground } = importModule('SetWidgetBackground')
+const flagColors = importModule('CountryColors') // dominant flag colors per ISO code
+const flagsHelper = importModule('CountryFlags') // round flag icons cached in Documents/Flags
 
 const date = new Date().getTime()
 const year = new Date(date).getFullYear()
@@ -96,29 +99,74 @@ async function resolvePending() {
   return resolved
 }
 
-/* Ring chart: one arc per country, sized by days; the rest of the year is a gap */
-const RING_COLORS = ['#4C9AFF', '#FF6B6B', '#2ED573', '#FFA502', '#A55EEA', '#1ABC9C', '#FF6EB4', '#F7DC6F', '#E17055']
-const MIN_FLAG_DAYS = 12 // shorter slices are drawn without flag (it wouldn't fit on the arc)
-
+/* Ring design: a calendar ring (each arc sits where those days really were) with flag badges.
+ * Canvas is 400px shown at ~150pt, so 1pt ≈ 2.67px.
+ * Layers, inside → out: ring · tether arc · month ticks · outer badge (+ radial stub to the badge). */
+const RUN_SEPARATOR = 3 // px of line between touching stretches (0 = none)
+const TAU = Math.PI * 2
+const TOP = -Math.PI / 2
 const daysInYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365
+const total = daysInYear(year)
+const doy = (ms) => {
+  const d = new Date(ms)
+  return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(d.getFullYear(), 0, 1)) / 86400000) + 1
+}
+const angleOfDay = (d) => TOP + (d / total) * TAU // d = 0..total (boundary between days)
+const norm = (a) => ((a % TAU) + TAU) % TAU
+const angDist = (a, b) => { const d = norm(a - b); return Math.min(d, TAU - d) }
+const signedDiff = (a, b) => { const d = norm(a - b); return d > TAU / 2 ? d - TAU : d }
 
-// A day with several countries is split equally among them, so the slices add
-// up to the days that have records (never more than the days in the year).
-function buildRing(locs) {
+/* Each country gets a color from its own flag */
+const FALLBACK_COLORS = ['#5B8DEF', '#F4796B', '#45C4A0', '#F5B84B', '#9B7FE8', '#4FB6D9', '#E86FA3', '#A3C95B', '#E39A6B']
+const MIN_COLOR_DIST = 110
+const hexToRgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
+function colorDist(a, b) { // "redmean": ~0 identical, >150 clearly different
+  const [r1, g1, b1] = hexToRgb(a), [r2, g2, b2] = hexToRgb(b), rm = (r1 + r2) / 2
+  return Math.sqrt((2 + rm / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - rm) / 256) * (b1 - b2) ** 2)
+}
+// Countries with most days choose first (they keep their iconic color); the others take the
+// next flag color that isn't too close to one already used, else the least-bad option.
+function assignColors(countries) {
+  const used = []
+  const far = (c) => used.length ? Math.min(...used.map(u => colorDist(u, c))) : 999
+  for (const c of [...countries].sort((a, b) => b.days - a.days)) {
+    const cands = [...(flagColors[c.iso] ?? []), ...FALLBACK_COLORS]
+    c.color = cands.find(x => far(x) >= MIN_COLOR_DIST) ?? cands.reduce((best, x) => far(x) > far(best) ? x : best)
+    used.push(c.color)
+  }
+}
+
+// Countries in order of first visit; a day with several countries is split among them.
+function buildCountries(locs) {
   const byDay = {}
   for (const l of locs) (byDay[dayKey(l.date)] ??= []).push(l)
-  const byCountry = {}
+  const by = {}
   for (const k in byDay) {
-    const countries = [...new Set(byDay[k].map(l => l.isoCountryCode))]
-    for (const iso of countries) {
-      const first = byDay[k].find(l => l.isoCountryCode === iso)
-      const c = (byCountry[iso] ??= { iso, country: first.country, days: 0, first: first.date })
-      c.days += 1 / countries.length
-      c.first = Math.min(c.first, first.date)
+    const isos = [...new Set(byDay[k].map(l => l.isoCountryCode))]
+    for (const iso of isos) {
+      const f = byDay[k].find(l => l.isoCountryCode === iso)
+      const c = (by[iso] ??= { iso, country: f.country, days: 0, first: f.date })
+      c.days += 1 / isos.length
+      c.first = Math.min(c.first, f.date)
     }
   }
-  const slices = Object.values(byCountry).sort((a, b) => a.first - b.first) // chronological
-  return { slices, recordedDays: Object.keys(byDay).length, total: daysInYear(year) }
+  const list = Object.values(by).sort((a, b) => a.first - b.first)
+  list.forEach(c => { c.flag = countryEmojis.find(e => e.isoCountryCode === c.iso)?.emojiCode ?? c.iso })
+  assignColors(list)
+  return { list, byDays: [...list].sort((a, b) => b.days - a.days), recordedDays: Object.keys(byDay).length }
+}
+
+// Consecutive days in the same country become one run (gaps up to TOL days are bridged).
+function buildRuns(locs, TOL = 7) {
+  const dayIso = {}
+  for (const l of locs) dayIso[doy(l.date)] ??= l.isoCountryCode
+  const runs = []
+  for (const d of Object.keys(dayIso).map(Number).sort((a, b) => a - b)) {
+    const r = runs[runs.length - 1]
+    if (r && r.iso === dayIso[d] && d - r.end <= TOL) r.end = d
+    else runs.push({ iso: dayIso[d], start: d, end: d })
+  }
+  return runs
 }
 
 function arcPath(cx, cy, rOut, rIn, a0, a1) {
@@ -137,61 +185,192 @@ function arcPath(cx, cy, rOut, rIn, a0, a1) {
   return path
 }
 
-function drawRing({ slices, recordedDays, total }, dark) {
-  const S = 400, cx = S / 2, cy = S / 2
-  const rOut = 192, rIn = 136, rMid = (rOut + rIn) / 2
+// capStart / capEnd: round that end of the arc (off where it touches the next stretch)
+function fillArc(ctx, cx, cy, rMid, th, a0, a1, color, capStart = true, capEnd = true) {
+  ctx.setFillColor(color)
+  const inset = (th / 2) / rMid
+  const i0 = capStart ? inset : 0, i1 = capEnd ? inset : 0
+  if ((capStart || capEnd) && a1 - a0 > i0 + i1 + 0.02) {
+    ctx.addPath(arcPath(cx, cy, rMid + th / 2, rMid - th / 2, a0 + i0, a1 - i1))
+    ctx.fillPath()
+    for (const [on, a] of [[capStart, a0 + inset], [capEnd, a1 - inset]]) { // round caps
+      if (on) ctx.fillEllipse(new Rect(cx + rMid * Math.cos(a) - th / 2, cy + rMid * Math.sin(a) - th / 2, th, th))
+    }
+  } else {
+    ctx.addPath(arcPath(cx, cy, rMid + th / 2, rMid - th / 2, a0, Math.max(a1, a0 + 0.015)))
+    ctx.fillPath()
+  }
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.setFillColor(color)
+  ctx.fillEllipse(new Rect(x - r, y - r, 2 * r, 2 * r))
+}
+
+function text(ctx, s, x, y, size, font, color, align = 'left') {
+  ctx.setFont(font)
+  ctx.setTextColor(color)
+  const w = 400
+  if (align === 'center') { ctx.setTextAlignedCenter(); ctx.drawTextInRect(`${s}`, new Rect(x - w / 2, y, w, size * 1.25)) }
+  else if (align === 'right') { ctx.setTextAlignedRight(); ctx.drawTextInRect(`${s}`, new Rect(x - w, y, w, size * 1.25)) }
+  else { ctx.setTextAlignedLeft(); ctx.drawTextInRect(`${s}`, new Rect(x, y, w, size * 1.25)) }
+}
+
+// Fallback when a round flag icon isn't cached yet: the flag emoji cropped to a disc.
+// DrawContext has no clipping, so the disc is built from thin horizontal strips, each its
+// own small canvas (the canvas bounds crop the emoji) as wide as the disc at that height.
+// Measured glyph: height = 0.63 * font size.
+function emojiDisc(ctx, emoji, x, y, r, step = 2) {
+  const size = (2 * r) / 0.63 * 1.02
+  for (let yy = -r; yy < r; yy += step) {
+    const ym = yy + step / 2
+    const half = Math.sqrt(Math.max(r * r - ym * ym, 0)) + 1.5 // bleed under the border ring
+    const w = half * 2
+    const sc = new DrawContext()
+    sc.size = new Size(w, step + 0.6)
+    sc.opaque = false
+    sc.respectScreenScale = true
+    sc.setFont(Font.systemFont(size))
+    sc.setTextAlignedCenter()
+    sc.drawTextInRect(emoji, new Rect(w / 2 - size, -yy - size * 0.6, size * 2, size * 1.25))
+    ctx.drawImageInRect(sc.getImage(), new Rect(x - half, y + yy, w, step + 0.6))
+  }
+}
+
+function drawRing({ list, byDays, recordedDays, runs }, dark, flagImages) {
+  const byIso = Object.fromEntries(list.map(c => [c.iso, c]))
   const ctx = new DrawContext()
-  ctx.size = new Size(S, S)
+  ctx.size = new Size(400, 400)
   ctx.opaque = false
   ctx.respectScreenScale = true
 
-  const gap = slices.length > 1 ? 0.03 : 0 // radians between slices
-  const flags = []
-  let start = -Math.PI / 2
+  // Two kinds of badge:
+  //  · "on ring": big, centered on the ring, for countries whose stretch has room
+  //  · "outer": smaller, for crowded short trips, tied to their stretch by a tether
+  // Canvas radius is 200: rOut + 18 (tether + ticks + gap) + 2*brOut must fit.
+  const cx = 200, cy = 200, th = 20, brOn = 31, brOut = 25, rOut = 130, rMid = rOut - th / 2
+  const rT = rOut + 6, rTick = rOut + 13, rOutBadge = rOut + 18 + brOut
+  const BORDER = 3.5
+  const textColor = dark ? '#FFFFFF' : '#1C1C1E'
+  const faded = dark ? new Color('#FFFFFF', 0.62) : new Color('#1C1C1E', 0.6)
+  const badgeBg = new Color(dark ? '#3A3A3C' : '#FFFFFF') // opaque so it reads over any background
+  const pt = (a, r) => new Point(cx + r * Math.cos(a), cy + r * Math.sin(a))
 
-  const fill = (a0, a1, color) => {
+  // Track: the elapsed year slightly stronger than the days still to come
+  const today = doy(Date.now())
+  const ta = angleOfDay(today - 0.5)
+  const trackCol = (k) => new Color(dark ? '#FFFFFF' : '#000000', (dark ? 0.14 : 0.10) * k)
+  fillArc(ctx, cx, cy, rMid, th, TOP, TOP + TAU - 0.0001, trackCol(0.55), false, false)
+  fillArc(ctx, cx, cy, rMid, th, TOP, angleOfDay(today), trackCol(1), false, false)
+
+  // Stretches touch each other (proportional to the days). Only the free ends are rounded;
+  // RUN_SEPARATOR > 0 also draws a thin line (in the widget background color) at each junction.
+  const touches = (r, o) => o !== r && o.end === r.start - 1 // o is the stretch right before r
+  for (const r of runs) {
+    const capStart = !runs.some(o => touches(r, o)), capEnd = !runs.some(o => touches(o, r))
+    fillArc(ctx, cx, cy, rMid, th, angleOfDay(r.start - 1), angleOfDay(r.end), new Color(byIso[r.iso].color), capStart, capEnd)
+  }
+  if (RUN_SEPARATOR > 0) {
+    const sepColor = new Color(dark ? '#555555' : '#FFFFFF', 0.9)
+    for (const r of runs) {
+      if (!runs.some(o => touches(r, o))) continue
+      const a = angleOfDay(r.start - 1), nx = -Math.sin(a) * RUN_SEPARATOR / 2, ny = Math.cos(a) * RUN_SEPARATOR / 2
+      const p0 = pt(a, rMid - th / 2 - 1), p1 = pt(a, rMid + th / 2 + 1), path = new Path()
+      path.move(new Point(p0.x + nx, p0.y + ny))
+      path.addLine(new Point(p1.x + nx, p1.y + ny))
+      path.addLine(new Point(p1.x - nx, p1.y - ny))
+      path.addLine(new Point(p0.x - nx, p0.y - ny))
+      path.closeSubpath()
+      ctx.setFillColor(sepColor)
+      ctx.addPath(path)
+      ctx.fillPath()
+    }
+  }
+
+  // Month ticks
+  for (let m = 0; m < 12; m++) {
+    const p = pt(angleOfDay(doy(new Date(year, m, 1).getTime()) - 1), rTick)
+    dot(ctx, p.x, p.y, 2.5, faded)
+  }
+
+  // Candidates: the 5 countries with most days, at the middle of their longest run
+  const cands = byDays.slice(0, 5).map(c => {
+    const best = runs.filter(r => r.iso === c.iso).sort((a, b) => (b.end - b.start) - (a.end - a.start))[0]
+    if (!best) return null
+    const a = (angleOfDay(best.start - 1) + angleOfDay(best.end)) / 2
+    return { c, a, home: a, homeDay: (best.start - 1 + best.end) / 2 }
+  }).filter(Boolean)
+
+  // The biggest countries claim the ring if they keep clear of each other and of today's dot.
+  // Only short trips (< MIN_HIDE days) may not hide under an on-ring badge.
+  const MIN_HIDE = 12
+  const halfDays = (Math.asin(brOn / rMid) + 0.03) / TAU * total
+  const coversOthers = (k) => runs.some(r => r.iso !== k.c.iso && r.end - r.start + 1 < MIN_HIDE &&
+    r.end >= k.homeDay - halfDays && r.start - 1 <= k.homeDay + halfDays)
+  const chord = (a, b) => 2 * rMid * Math.sin(angDist(a, b) / 2)
+  const onRing = [], outer = []
+  for (const k of cands) {
+    const ok = !coversOthers(k) && chord(k.home, ta) >= brOn + 14 && onRing.every(o => chord(o.home, k.home) >= 2 * brOn + 4)
+    ;(ok ? onRing : outer).push(k)
+  }
+
+  // Outer badges: spread apart, and keep clear of the on-ring ones
+  const minSepOut = 2 * Math.asin((brOut + 3) / rOutBadge)
+  let clearOn = 0
+  while (clearOn < 1.5 && Math.hypot(rOutBadge * Math.cos(clearOn) - rMid, rOutBadge * Math.sin(clearOn)) < brOut + brOn + 4) clearOn += 0.005
+  outer.sort((x, y) => x.a - y.a)
+  for (let it = 0; it < 80; it++) {
+    for (let i = 0; i < outer.length; i++) {
+      const j = (i + 1) % outer.length
+      if (j === i) break
+      const d = norm(outer[j].a - outer[i].a)
+      if (d < minSepOut) { const push = (minSepOut - d) / 2; outer[i].a -= push; outer[j].a += push }
+    }
+    for (const b of outer) for (const o of onRing) {
+      if (Math.abs(signedDiff(b.a, o.a)) < clearOn) b.a = o.a + (signedDiff(b.home, o.a) >= 0 ? 1 : -1) * clearOn
+    }
+  }
+
+  // Tethers: arc from the real stretch to the badge's angle, then a radial stub to the badge
+  const stub = (a, r0, r1, w, color) => {
+    const nx = -Math.sin(a) * w / 2, ny = Math.cos(a) * w / 2
+    const p0 = pt(a, r0), p1 = pt(a, r1), path = new Path()
+    path.move(new Point(p0.x + nx, p0.y + ny))
+    path.addLine(new Point(p1.x + nx, p1.y + ny))
+    path.addLine(new Point(p1.x - nx, p1.y - ny))
+    path.addLine(new Point(p0.x - nx, p0.y - ny))
+    path.closeSubpath()
     ctx.setFillColor(color)
-    ctx.addPath(arcPath(cx, cy, rOut, rIn, a0, a1))
+    ctx.addPath(path)
     ctx.fillPath()
   }
-
-  slices.forEach((sl, i) => {
-    const sweep = sl.days / total * 2 * Math.PI
-    const a0 = start + gap / 2
-    const a1 = Math.max(start + sweep - gap / 2, a0 + 0.01)
-    fill(a0, a1, new Color(RING_COLORS[i % RING_COLORS.length]))
-    if (sl.days >= MIN_FLAG_DAYS) flags.push({ sl, angle: start + sweep / 2 })
-    start += sweep
-  })
-
-  // Days of the year without any record
-  if (start < 3 * Math.PI / 2 - 0.01) {
-    fill(start + gap / 2, 3 * Math.PI / 2 - gap / 2, dark ? new Color('#FFFFFF', 0.12) : new Color('#000000', 0.10))
+  for (const { c, a, home } of outer) {
+    const col = new Color(c.color)
+    if (angDist(a, home) > 0.01) fillArc(ctx, cx, cy, rT, 4, Math.min(a, home), Math.max(a, home), col, false, false)
+    const h = pt(home, rT)
+    dot(ctx, h.x, h.y, 4.5, col)
+    stub(a, rT, rOutBadge - brOut + 2, 4, col)
   }
 
-  // Flags sit centered on their own arc
-  ctx.setTextAlignedCenter()
-  ctx.setFont(Font.systemFont(28))
-  for (const { sl, angle } of flags) {
-    const x = cx + rMid * Math.cos(angle), y = cy + rMid * Math.sin(angle)
-    const flag = countryEmojis.find(e => e.isoCountryCode === sl.iso)?.emojiCode ?? sl.iso
-    ctx.drawTextInRect(flag, new Rect(x - 30, y - 20, 60, 40))
-  }
+  // Today marker
+  const tp = pt(ta, rMid)
+  dot(ctx, tp.x, tp.y, 12, badgeBg)
+  dot(ctx, tp.x, tp.y, 7, new Color(textColor))
 
-  // Center: days with at least one record (not number of records)
-  const textColor = dark ? Color.white() : Color.darkGray()
-  const faded = new Color(textColor.hex, 0.7)
-  ctx.setTextColor(textColor)
-  ctx.setFont(Font.heavyMonospacedSystemFont(62))
-  ctx.drawTextInRect(`${recordedDays}`, new Rect(cx - 80, cy - 58, 160, 72))
-  ctx.setTextColor(faded)
-  ctx.setFont(Font.semiboldSystemFont(24))
-  ctx.drawTextInRect(`${year}`, new Rect(cx - 80, cy + 16, 160, 30))
-  const hidden = slices.length - flags.length
-  if (hidden > 0) {
-    ctx.setFont(Font.systemFont(20))
-    ctx.drawTextInRect(`+${hidden} more`, new Rect(cx - 80, cy + 46, 160, 26))
+  const badge = (c, a, r, br) => {
+    const p = pt(a, r)
+    dot(ctx, p.x, p.y, br, new Color(c.color))
+    dot(ctx, p.x, p.y, br - BORDER, badgeBg)
+    const img = flagImages[c.iso]
+    if (img) ctx.drawImageInRect(img, new Rect(p.x - (br - BORDER), p.y - (br - BORDER), 2 * (br - BORDER), 2 * (br - BORDER)))
+    else emojiDisc(ctx, c.flag, p.x, p.y, br - BORDER)
   }
+  for (const { c, a } of onRing) badge(c, a, rMid, brOn)
+  for (const { c, a } of outer) badge(c, a, rOutBadge, brOut)
+
+  // Center: countries count + days with a record (the flags around say what the number counts)
+  text(ctx, list.length, cx, cy - 78, 96, Font.heavySystemFont(96), new Color(textColor), 'center')
+  text(ctx, `${recordedDays} days`, cx, cy + 38, 30, Font.semiboldSystemFont(30), faded, 'center')
   return ctx.getImage()
 }
 
@@ -319,8 +498,11 @@ async function createWidget() {
   if (msg) {
     widget.addText(msg)
   } else {
-    const ring = buildRing(storedLocs)
-    const img = drawRing(ring, Device.isUsingDarkAppearance())
+    const data = { ...buildCountries(storedLocs), runs: buildRuns(storedLocs) }
+    // Round flag icons for the badges. Missing ones are only fetched when we know we're online
+    // (the reverse geocode above worked); otherwise the badge falls back to the cropped emoji.
+    const flagImages = await flagsHelper.load(ifm, dir, data.byDays.slice(0, 5).map(c => c.iso), { download: !!currentLoc })
+    const img = drawRing(data, Device.isUsingDarkAppearance(), flagImages)
     const wimg = widget.addImage(img)
     wimg.centerAlignImage()
   }

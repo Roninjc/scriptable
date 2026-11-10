@@ -18,10 +18,10 @@
     "hash": "1dfd987c"
   },
   "Countries a year": {
-    "version": "1.2.3",
+    "version": "1.2.4",
     "type": "widget",
-    "lastUpdated": "2026-11-08T20:24:18.882Z",
-    "hash": "20f7811b"
+    "lastUpdated": "2026-11-10T14:58:46.813Z",
+    "hash": "-4878ad51"
   },
   "Servers healthz": {
     "version": "1.1.4",
@@ -140,5 +140,23 @@
     "type": "script",
     "lastUpdated": "2026-07-31T12:54:52.672Z",
     "hash": "-56d47e2f"
+  },
+  "CountryColors": {
+    "version": "1.0.0",
+    "type": "helper",
+    "hash": "-1b0e364c",
+    "lastUpdated": "2026-11-10T14:58:46.813Z"
+  },
+  "CountryFlags": {
+    "version": "1.0.0",
+    "type": "helper",
+    "hash": "59822969",
+    "lastUpdated": "2026-11-10T14:58:46.813Z"
+  },
+  "DownloadFlags": {
+    "version": "1.0.0",
+    "type": "script",
+    "hash": "42d7879c",
+    "lastUpdated": "2026-11-10T14:58:46.813Z"
   }
 }
