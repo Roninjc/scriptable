@@ -230,7 +230,7 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 // Runs a Scriptable script (widget file) with the mocked globals.
 // opts: { theme, family, files: {path: string}, root, widgetParameter }
 async function runWidget(file, opts) {
-  const { theme = 'light', family = 'small', files = {}, root, widgetParameter = null } = opts
+  const { theme = 'light', family = 'small', files = {}, root, widgetParameter = null, failRead = false, failWrite = false, online = null } = opts
   const Color = makeColorClass(() => theme)
   const DrawContext = makeDrawContext(Color)
   let captured = null
@@ -248,19 +248,26 @@ async function runWidget(file, opts) {
       const b64 = fs.readFileSync(f).toString('base64')
       return new MockImage(`<image href="data:image/png;base64,${b64}" width="128" height="128"/>`, new Size(128, 128))
     },
-    readString: (p) => store[p],
-    writeString: (p, s) => { store[p] = s },
-    downloadFileFromiCloud: () => {},
+    // failRead / failWrite simulate an evicted or syncing iCloud year file
+    readString: (p) => (failRead && /locationsStore/.test(p) ? null : store[p]),
+    writeString: (p, s) => { if (failWrite && /locationsStore/.test(p)) throw new Error('The file could not be written to disk'); store[p] = s },
+    isFileDownloaded: () => true,
+    isFileStoredIniCloud: () => true,
+    downloadFileFromiCloud: async () => {},
   })
   const FileManager = { iCloud: makeFM, local: makeFM }
 
   const globals = {
     Color, Font: FontProxy, Point, Size, Rect, Path, DrawContext,
     ListWidget, FileManager,
-    Location: {
+    Location: online ? {
+      current: async () => ({ latitude: 40, longitude: -3 }),
+      reverseGeocode: async () => [{ country: online.country, isoCountryCode: online.isoCountryCode }],
+    } : {
       current: async () => { throw new Error('preview: no GPS') },
       reverseGeocode: async () => { throw new Error('preview: offline') },
     },
+    Keychain: { contains: () => false, get: () => null },
     Device: { isUsingDarkAppearance: () => theme === 'dark' },
     config: { runsInWidget: true, widgetFamily: family },
     args: { widgetParameter },
@@ -292,7 +299,7 @@ async function runWidget(file, opts) {
   const { run } = load('widget', file)
   await run()
   if (!captured) throw new Error('The script never called Script.setWidget()')
-  return { html: renderWidgetHtml(captured, theme, family), family }
+  return { html: renderWidgetHtml(captured, theme, family), family, store }
 }
 
 module.exports = { runWidget, FAMILY_SIZE }

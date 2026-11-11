@@ -92,9 +92,11 @@ async function resolvePending() {
     }
   }
   if (done > 0) {
-    const rest = pending.slice(done)
-    if (rest.length > 0) ifm.writeString(pathPending, JSON.stringify(rest))
-    else ifm.writeString(pathPending, "[]")
+    try {
+      ifm.writeString(pathPending, JSON.stringify(pending.slice(done)))
+    } catch (e) {
+      console.warn(`Could not update the pending queue: ${e}`)
+    }
   }
   return resolved
 }
@@ -377,39 +379,119 @@ function drawRing({ list, byDays, recordedDays, runs }, dark, flagImages) {
   return ctx.getImage()
 }
 
-async function loadYear(y) {
-  const path = pathForYear(y)
-  if (!ifm.fileExists(path)) return []
+/* Storage
+ * The year files live in iCloud, and a widget can run while one is evicted, still downloading
+ * or being replaced by a sync: reads then fail or return null, and writes can fail. So:
+ *  - "unreadable" is never treated as "empty" (that would show 0 days, or overwrite the year),
+ *  - a year file that could not be read is never written back,
+ *  - reads/writes are retried a few times,
+ *  - the last good copy is kept in a LOCAL file and used to draw when iCloud isn't readable,
+ *  - problems are logged locally (countries-widget.log) since a widget has no console.
+ */
+const lfm = FileManager.local()
+const ldir = lfm.documentsDirectory()
+const pathCache = (y) => lfm.joinPath(ldir, `locationsCache ${y}.json`)
+const pathLog = lfm.joinPath(ldir, 'countries-widget.log')
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+
+function logProblem(phase, e) {
+  console.warn(`[${phase}] ${e}`)
   try {
-    ifm.downloadFileFromiCloud(path)
-    await new Promise(r => setTimeout(r, 500))
+    const old = lfm.fileExists(pathLog) ? lfm.readString(pathLog).split('\n').filter(Boolean) : []
+    old.push(`${new Date().toISOString()} ${phase}: ${e}`)
+    lfm.writeString(pathLog, old.slice(-40).join('\n'))
+  } catch (err) {}
+}
+
+function readCache(y) {
+  try {
+    const list = JSON.parse(lfm.readString(pathCache(y)))
+    return Array.isArray(list) ? list : []
   } catch (e) {
-    console.warn("No se pudo descargar el archivo de iCloud:", e)
+    return []
   }
-  return JSON.parse(ifm.readString(path)) || []
+}
+function writeCache(y, list) {
+  try { lfm.writeString(pathCache(y), JSON.stringify(list)) } catch (e) { logProblem('cache', e) }
+}
+
+// → { status: 'ok', list } | { status: 'missing' } | { status: 'unreadable' }
+async function readYearStore(y) {
+  const path = pathForYear(y)
+  if (!ifm.fileExists(path)) return { status: 'missing' }
+  let last = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (!ifm.isFileDownloaded(path)) await Promise.race([ifm.downloadFileFromiCloud(path), sleep(6000)])
+      const raw = ifm.readString(path)
+      const list = raw ? JSON.parse(raw) : null
+      if (Array.isArray(list)) return { status: 'ok', list }
+      last = new Error('empty or invalid content')
+    } catch (e) {
+      last = e
+    }
+    await sleep(400)
+  }
+  logProblem('read', `${path}: ${last}`)
+  return { status: 'unreadable' }
+}
+
+async function writeYearStore(path, list) {
+  let last = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      ifm.writeString(path, JSON.stringify(list))
+      return true
+    } catch (e) {
+      last = e
+      await sleep(500)
+    }
+  }
+  logProblem('write', `${path}: ${last}`)
+  return false
+}
+
+// The year's records, or the local copy when iCloud can't be read right now.
+// Throws only when there is nothing to show at all.
+async function loadYear(y) {
+  const r = await readYearStore(y)
+  if (r.status === 'ok') {
+    writeCache(y, r.list)
+    return r.list
+  }
+  const cached = readCache(y)
+  if (r.status === 'missing' && cached.length === 0) return [] // genuinely no data yet
+  if (cached.length > 0) {
+    logProblem('load', `${r.status} year file, drawing the local copy`)
+    return cached
+  }
+  throw new Error('year file not readable')
 }
 
 // Adds entries to their own year's file (a queued entry can belong to a previous
-// year). Dedupes by country code + calendar day. Returns how many were added.
-function addToStore(entries) {
+// year). Dedupes by country code + calendar day. Returns how many were saved.
+async function addToStore(entries) {
   const byYear = {}
   for (const e of entries) (byYear[new Date(e.date).getFullYear()] ??= []).push(e)
   let added = 0
   for (const y in byYear) {
     const path = pathForYear(y)
-    let list = []
-    if (ifm.fileExists(path)) {
-      try { ifm.downloadFileFromiCloud(path) } catch (e) {}
-      list = JSON.parse(ifm.readString(path)) || []
+    const r = await readYearStore(y)
+    // Only start a new file when there is truly nothing: an unreadable (or "missing" while we
+    // hold a local copy) year file must not be overwritten with just today's entry.
+    if (r.status === 'unreadable' || (r.status === 'missing' && readCache(y).length > 0)) {
+      logProblem('store', `skipping ${y}: year file unavailable, not writing`)
+      continue
     }
-    let changed = false
+    const list = r.status === 'ok' ? r.list : []
+    let fresh = 0
     for (const e of byYear[y]) {
       const dup = list.some(l => l.isoCountryCode === e.isoCountryCode && dayKey(l.date) === dayKey(e.date))
-      if (!dup) { list.push(e); added++; changed = true }
+      if (!dup) { list.push(e); fresh++ }
     }
-    if (changed || !ifm.fileExists(path)) {
+    if (fresh > 0 || r.status === 'missing') {
       list.sort((a, b) => a.date - b.date)
-      ifm.writeString(path, JSON.stringify(list))
+      if (await writeYearStore(path, list)) { added += fresh; writeCache(y, list) }
     }
   }
   return added
@@ -464,12 +546,12 @@ async function createWidget() {
   // 3. Reverse worked → we're online: resolve what was queued while offline.
   const newEntries = []
   if (currentLoc) {
-    newEntries.push(...await resolvePending())
+    try { newEntries.push(...await resolvePending()) } catch (e) { logProblem('pending', e) }
     newEntries.push(currentLoc)
   }
 
   try {
-    const added = addToStore(newEntries)
+    const added = await addToStore(newEntries) // I/O problems are logged, not thrown
     if (added > 0) {
       // New day/country recorded → publish the encrypted dataset to the relay.
       // No-op unless sync was enabled from the Worldwide app (keys in Keychain).
@@ -488,8 +570,15 @@ async function createWidget() {
         console.warn(`Relay sync failed: ${e}`)
       }
     }
+  } catch (e) {
+    logProblem('store', e)
+  }
+
+  // Whatever happened above, draw from the year file (or its local copy) rather than an error
+  try {
     storedLocs = await loadYear(year)
   } catch (e) {
+    logProblem('load', e)
     msg = `- ${e} | ${pathLoc}`
   }
 
