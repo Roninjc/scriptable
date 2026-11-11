@@ -247,9 +247,9 @@ function drawRing({ list, byDays, recordedDays, runs }, dark, flagImages) {
   // Two kinds of badge:
   //  · "on ring": big, centered on the ring, for countries whose stretch has room
   //  · "outer": smaller, for crowded short trips, tied to their stretch by a tether
-  // Canvas radius is 200: rOut + 18 (tether + ticks + gap) + 2*brOut must fit.
-  const cx = 200, cy = 200, th = 20, brOn = 31, brOut = 25, rOut = 130, rMid = rOut - th / 2
-  const rT = rOut + 6, rTick = rOut + 13, rOutBadge = rOut + 18 + brOut
+  // Canvas radius is 200: rOut + 14 (tether + ticks + gap) + 2*brOut must fit.
+  const cx = 200, cy = 200, th = 20, brOn = 31, brOut = 25, rOut = 135, rMid = rOut - th / 2
+  const rT = rOut + 5, rTick = rOut + 10, rOutBadge = rOut + 14 + brOut
   const BORDER = 3.5
   const textColor = dark ? '#FFFFFF' : '#1C1C1E'
   const faded = dark ? new Color('#FFFFFF', 0.62) : new Color('#1C1C1E', 0.6)
@@ -287,10 +287,13 @@ function drawRing({ list, byDays, recordedDays, runs }, dark, flagImages) {
     }
   }
 
-  // Month ticks
+  // Month ticks: a small light with a soft halo, in a discreet cool tone
+  const tickGlow = dark ? '#DCE4F2' : '#7C879B'
   for (let m = 0; m < 12; m++) {
     const p = pt(angleOfDay(doy(new Date(year, m, 1).getTime()) - 1), rTick)
-    dot(ctx, p.x, p.y, 2.5, faded)
+    dot(ctx, p.x, p.y, 7, new Color(tickGlow, dark ? 0.10 : 0.14)) // soft halo
+    dot(ctx, p.x, p.y, 4.5, new Color(tickGlow, dark ? 0.22 : 0.26))
+    dot(ctx, p.x, p.y, 2.5, new Color(tickGlow))
   }
 
   // Candidates: the 5 countries with most days, at the middle of their longest run
@@ -369,8 +372,8 @@ function drawRing({ list, byDays, recordedDays, runs }, dark, flagImages) {
   for (const { c, a } of outer) badge(c, a, rOutBadge, brOut)
 
   // Center: countries count + days with a record (the flags around say what the number counts)
-  text(ctx, list.length, cx, cy - 78, 96, Font.heavySystemFont(96), new Color(textColor), 'center')
-  text(ctx, `${recordedDays} days`, cx, cy + 38, 30, Font.semiboldSystemFont(30), faded, 'center')
+  text(ctx, list.length, cx, cy - 80, 96, Font.heavySystemFont(96), new Color(textColor), 'center')
+  text(ctx, `${recordedDays} days`, cx, cy + 26, 30, Font.semiboldSystemFont(30), faded, 'center')
   return ctx.getImage()
 }
 
